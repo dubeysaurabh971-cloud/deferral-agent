@@ -1,0 +1,9 @@
+anthropic
+chromadb
+sentence-transformers
+rank_bm25
+datasets
+streamlit
+pytest
+python-dotenv
+tiktoken
