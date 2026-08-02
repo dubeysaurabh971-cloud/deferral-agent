@@ -1,0 +1,32 @@
+{
+  "mode": "offline (decision-policy only, no LLM calls)",
+  "golden_decision_accuracy": {
+    "n": 100,
+    "accuracy": 1.0
+  },
+  "adversarial_decision_accuracy": {
+    "n": 60,
+    "accuracy": 0.03333333333333333,
+    "by_category": {
+      "out_of_kb": {
+        "n": 20,
+        "accuracy": 0.0
+      },
+      "ambiguous": {
+        "n": 20,
+        "accuracy": 0.0
+      },
+      "injection": {
+        "n": 10,
+        "accuracy": 0.2
+      },
+      "near_miss": {
+        "n": 10,
+        "accuracy": 0.0
+      }
+    }
+  },
+  "false_escalation_rate": 0.0,
+  "deferral_precision": null,
+  "note": "Baseline decision policy is hardcoded to RESOLVE (Week 1 has no gate), so these numbers are computable without calling the model. Deferral precision is undefined (0/0) because the baseline never escalates. Groundedness, correctness, and resolution-rate-by-correctness require the live resolver + LLM judge \u2014 pending ANTHROPIC_API_KEY. False escalation rate is 0% trivially, not as a virtue: a resolver that never escalates cannot falsely escalate."
+}
