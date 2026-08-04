@@ -5,14 +5,12 @@
             score it against the golden + adversarial expected labels without spending
             a single token.
   full    — runs the live resolver + LLM-judge scorers (groundedness, correctness) on
-            every item. Requires ANTHROPIC_API_KEY.
+            every item. Requires an API key for the configured LLM_PROVIDER.
 
 Run: `python -m src.eval.harness` (auto-picks full if a key is present, else offline).
 """
 import json
 import statistics
-
-import anthropic
 
 from src import config
 from src.eval.scorers import score_correctness, score_groundedness
@@ -83,15 +81,14 @@ def run_offline_report() -> dict:
 def run_full_report() -> dict:
     from src.resolver import NaiveResolver
 
-    client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     resolver = NaiveResolver()
 
     golden = load_golden()
     golden_results = []
     for item in golden:
         run = resolver.resolve(item["question"])
-        groundedness = score_groundedness(client, run["answer"], run["retrieved_chunks"])
-        correctness = score_correctness(client, item["question"], run["answer"], item["reference_answer"])
+        groundedness = score_groundedness(run["answer"], run["retrieved_chunks"])
+        correctness = score_correctness(item["question"], run["answer"], item["reference_answer"])
         golden_results.append({
             "item_id": item["item_id"],
             "decision_correct": run["decision"] == item["expected_decision"],
@@ -103,7 +100,7 @@ def run_full_report() -> dict:
     adversarial_results = []
     for item in adversarial:
         run = resolver.resolve(item["ticket_text"])
-        groundedness = score_groundedness(client, run["answer"], run["retrieved_chunks"])
+        groundedness = score_groundedness(run["answer"], run["retrieved_chunks"])
         adversarial_results.append({
             "item_id": item["item_id"],
             "category": item["category"],
@@ -116,7 +113,8 @@ def run_full_report() -> dict:
 
     report = {
         "mode": "full (live resolver + LLM judge)",
-        "resolver_model": config.RESOLVER_MODEL,
+        "llm_provider": config.LLM_PROVIDER,
+        "resolver_model": config.active_model(),
         "n_golden": len(golden_results),
         "n_adversarial": len(adversarial_results),
         "golden_decision_accuracy": accuracy(golden_results),
@@ -150,7 +148,7 @@ def save_report(report: dict, name: str) -> None:
 
 
 if __name__ == "__main__":
-    if config.ANTHROPIC_API_KEY:
+    if config.api_key_present():
         report = run_full_report()
         save_report(report, "baseline_full.json")
     else:
