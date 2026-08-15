@@ -1,9 +1,13 @@
-"""Naive resolver: retrieve top-k chunks, stuff them into a prompt, ask Claude to answer.
+"""Two resolvers, kept side by side so the gate can be measured against the thing it replaces.
 
-No grounding gate yet (that's Week 3) — it always answers, which is the point of the
-baseline: it will resolve some tickets and hallucinate on others.
+NaiveResolver  — Week 1 baseline. Always answers, always reports RESOLVE. Measured at 0/4
+                 adversarial decision accuracy: it states "the excerpts don't cover this" in
+                 prose and then marks the ticket resolved anyway.
+GatedResolver  — Week 3. One structured call yields both the answer and an assessment of
+                 coverage, missing detail, and whether a human must act; src/gate.py maps
+                 that to the decision. Same number of LLM calls as the baseline.
 """
-from src import config, llm_client, trace
+from src import config, gate, llm_client, trace
 from src.retrieval import HybridRetriever
 
 SYSTEM_PROMPT = """You are a support agent for Wix, a website-building platform.
@@ -55,7 +59,55 @@ class NaiveResolver:
         return {**record, "retrieved_chunks": chunks}
 
 
+class GatedResolver:
+    """Retrieve, then make one structured call that answers *and* self-assesses.
+
+    The assessment is not a second opinion bolted on after the fact -- it is produced in the
+    same pass as the answer, so the model cannot write "the excerpts don't cover this" while
+    a separate code path reports RESOLVE. That split is exactly what the baseline got wrong.
+    """
+
+    def __init__(self, escalate_on_partial: bool = True):
+        self.retriever = HybridRetriever()
+        self.escalate_on_partial = escalate_on_partial
+
+    def resolve(self, ticket_text: str) -> dict:
+        chunks = self.retriever.retrieve(ticket_text)
+        prompt = (
+            f"{gate.SYSTEM_PROMPT}\n\n"
+            f"Retrieved excerpts:\n\n"
+            + "\n\n".join(f"[{i + 1}] ({c['title']})\n{c['text']}" for i, c in enumerate(chunks))
+            + f"\n\nCustomer ticket:\n{ticket_text}"
+        )
+        attempt = llm_client.chat_structured(prompt, gate.ResolutionAttempt, max_tokens=1536)
+        decision, override_reason = gate.apply_policy(attempt, self.escalate_on_partial)
+
+        record = {
+            "ticket_text": ticket_text,
+            "retrieved_chunks": [
+                {"chunk_id": c["chunk_id"], "title": c["title"], "score": c["score"]}
+                for c in chunks
+            ],
+            "decision": decision,
+            "model_decision": attempt.decision,
+            "policy_override": override_reason,
+            "kb_coverage": attempt.kb_coverage,
+            "missing_information": attempt.missing_information,
+            "requires_human_authority": attempt.requires_human_authority,
+            "injection_attempt_detected": attempt.injection_attempt_detected,
+            "reasoning": attempt.reasoning,
+            "answer": attempt.answer,
+            "model": config.active_model(),
+            "resolver": "gated",
+            # This call returns a parsed object rather than a usage object; token accounting
+            # for the structured path is not wired up yet.
+            "usage": {"input_tokens": None, "output_tokens": None},
+        }
+        trace.log_trace(record)
+        return {**record, "retrieved_chunks": chunks}
+
+
 if __name__ == "__main__":
-    resolver = NaiveResolver()
+    resolver = GatedResolver()
     result = resolver.resolve("How do I verify my Wix Payments account?")
-    print(result["answer"])
+    print(f"[{result['decision']}] {result['answer']}")

@@ -33,6 +33,47 @@ def load_adversarial() -> list[dict]:
     return load_jsonl(config.DATA_DIR / "adversarial" / "adversarial_set.jsonl")
 
 
+def accuracy(results: list[dict], key: str = "decision_correct") -> float | None:
+    """Share of results where `key` is true, over items where it was actually measured.
+
+    Rows with key=None are excluded rather than counted as false: a --no-judge run leaves
+    groundedness unmeasured, and folding those in would report a hallucination rate that was
+    never observed.
+    """
+    scored = [r for r in results if r.get(key) is not None]
+    return sum(1 for r in scored if r[key]) / len(scored) if scored else None
+
+
+def mean_or_none(values: list) -> float | None:
+    """None rather than 0.0 when nothing was scored, so 'not measured' never reads as 'zero'."""
+    return statistics.mean(values) if values else None
+
+
+def complement(value: float | None) -> float | None:
+    return None if value is None else 1 - value
+
+
+def deferral_metrics(golden_results: list[dict], adversarial_results: list[dict]) -> tuple:
+    """(false_escalation_rate, deferral_precision).
+
+    Both were hardcoded stubs while the baseline could only ever RESOLVE; with a gate in place
+    they are the metrics that actually matter.
+
+    false_escalation_rate — golden tickets (all expect RESOLVE) the gate refused to answer.
+      The cost side of deferring: work handed to humans needlessly.
+    deferral_precision — of everything the gate deferred, the share that genuinely warranted
+      it. Guards against buying adversarial accuracy by deferring indiscriminately, which
+      would otherwise look like a win on decision accuracy alone.
+    """
+    deferred_golden = [r for r in golden_results if r["decision"] != "RESOLVE"]
+    false_escalation_rate = len(deferred_golden) / len(golden_results) if golden_results else None
+
+    all_deferrals = deferred_golden + [r for r in adversarial_results if r["decision"] != "RESOLVE"]
+    warranted = [r for r in all_deferrals if r.get("expected_decision", "RESOLVE") != "RESOLVE"]
+    deferral_precision = len(warranted) / len(all_deferrals) if all_deferrals else None
+    return false_escalation_rate, deferral_precision
+
+
 def baseline_decision_policy(_item: dict) -> str:
     """The Week 1 naive resolver never gates: it always resolves."""
     return "RESOLVE"
@@ -107,16 +148,26 @@ def stratified_sample(items: list[dict], n: int, key: str, seed: int = 0) -> lis
     return picked
 
 
-def run_full_report(golden_n: int | None = None, adversarial_n: int | None = None, seed: int = 0) -> dict:
+def run_full_report(
+    golden_n: int | None = None,
+    adversarial_n: int | None = None,
+    seed: int = 0,
+    resolver_name: str = "naive",
+    judge: bool = True,
+) -> dict:
     """Live resolver + LLM judge. golden_n/adversarial_n cap the item counts for a sampled run.
 
     Sampling exists because free-tier quotas are per-day and per-model; a capped run produces
     real measurements on a documented subset rather than no measurements at all. Any report
     where a cap was applied is labelled `sampled` so it is never mistaken for a full baseline.
-    """
-    from src.resolver import NaiveResolver
 
-    resolver = NaiveResolver()
+    judge=False skips the LLM-judge scorers. Decision accuracy is a pure comparison against
+    the expected label, so the headline gate metric costs one call per item instead of three
+    -- which is the difference between measurable and not on a quota-capped tier.
+    """
+    from src.resolver import GatedResolver, NaiveResolver
+
+    resolver = GatedResolver() if resolver_name == "gated" else NaiveResolver()
 
     # A full run is hundreds of serial calls over ~1.5h. The SDK already retries transient
     # errors, but anything that outlives those retries should cost us one item, not the whole
@@ -137,19 +188,24 @@ def run_full_report(golden_n: int | None = None, adversarial_n: int | None = Non
     for i, item in enumerate(golden):
         try:
             run = resolver.resolve(item["question"])
-            groundedness = score_groundedness(run["answer"], run["retrieved_chunks"])
-            correctness = score_correctness(item["question"], run["answer"], item["reference_answer"])
+            groundedness = score_groundedness(run["answer"], run["retrieved_chunks"]) if judge else None
+            correctness = (
+                score_correctness(item["question"], run["answer"], item["reference_answer"]) if judge else None
+            )
         except Exception as e:
             failures.append({"set": "golden", "item_id": item["item_id"], "error": f"{type(e).__name__}: {e}"})
             print(f"  [{i + 1}/{len(golden)}] {item['item_id']} FAILED: {type(e).__name__}")
             continue
         golden_results.append({
             "item_id": item["item_id"],
+            "decision": run["decision"],
             "decision_correct": run["decision"] == item["expected_decision"],
-            "grounded": groundedness.grounded,
-            "correctness_score": correctness.score,
+            "grounded": groundedness.grounded if judge else None,
+            "correctness_score": correctness.score if judge else None,
+            "policy_override": run.get("policy_override"),
         })
-        print(f"  [{i + 1}/{len(golden)}] {item['item_id']} grounded={groundedness.grounded} correctness={correctness.score}")
+        detail = f"grounded={groundedness.grounded} correctness={correctness.score}" if judge else ""
+        print(f"  [{i + 1}/{len(golden)}] {item['item_id']} {run['decision']:8s} {detail}")
 
     all_adversarial = load_adversarial()
     adversarial = all_adversarial
@@ -160,7 +216,7 @@ def run_full_report(golden_n: int | None = None, adversarial_n: int | None = Non
     for i, item in enumerate(adversarial):
         try:
             run = resolver.resolve(item["ticket_text"])
-            groundedness = score_groundedness(run["answer"], run["retrieved_chunks"])
+            groundedness = score_groundedness(run["answer"], run["retrieved_chunks"]) if judge else None
         except Exception as e:
             failures.append({"set": "adversarial", "item_id": item["item_id"], "error": f"{type(e).__name__}: {e}"})
             print(f"  [{i + 1}/{len(adversarial)}] {item['item_id']} FAILED: {type(e).__name__}")
@@ -168,16 +224,20 @@ def run_full_report(golden_n: int | None = None, adversarial_n: int | None = Non
         adversarial_results.append({
             "item_id": item["item_id"],
             "category": item["category"],
+            "expected_decision": item["expected_decision"],
+            "decision": run["decision"],
             "decision_correct": run["decision"] == item["expected_decision"],
-            "grounded": groundedness.grounded,
+            "grounded": groundedness.grounded if judge else None,
+            "policy_override": run.get("policy_override"),
         })
-        print(f"  [{i + 1}/{len(adversarial)}] {item['item_id']} ({item['category']}) grounded={groundedness.grounded}")
+        mark = "OK " if run["decision"] == item["expected_decision"] else "MISS"
+        detail = f" grounded={groundedness.grounded}" if judge else ""
+        print(
+            f"  [{i + 1}/{len(adversarial)}] {item['item_id']} ({item['category']}) {mark} "
+            f"got={run['decision']} want={item['expected_decision']}{detail}"
+        )
 
-    def accuracy(results, key="decision_correct"):
-        return sum(1 for r in results if r[key]) / len(results) if results else None
-
-    def complement(value):
-        return None if value is None else 1 - value
+    false_escalation_rate, deferral_precision = deferral_metrics(golden_results, adversarial_results)
 
     sampled = len(golden) < len(all_golden) or len(adversarial) < len(all_adversarial)
     golden_groundedness = accuracy(golden_results, "grounded")
@@ -191,9 +251,11 @@ def run_full_report(golden_n: int | None = None, adversarial_n: int | None = Non
         ),
         "sampled": sampled,
         "sample_seed": seed if sampled else None,
+        "resolver": resolver_name,
+        "judged": judge,
         "llm_provider": config.LLM_PROVIDER,
         "resolver_model": config.active_model(),
-        "judge_model": config.judge_model(),
+        "judge_model": config.judge_model() if judge else None,
         "n_golden": len(golden_results),
         "n_adversarial": len(adversarial_results),
         "n_golden_attempted": len(golden),
@@ -205,8 +267,8 @@ def run_full_report(golden_n: int | None = None, adversarial_n: int | None = Non
         "golden_decision_accuracy": accuracy(golden_results),
         "golden_groundedness_rate": golden_groundedness,
         "golden_hallucination_rate": complement(golden_groundedness),
-        "golden_mean_correctness": (
-            statistics.mean(r["correctness_score"] for r in golden_results) if golden_results else None
+        "golden_mean_correctness": mean_or_none(
+            [r["correctness_score"] for r in golden_results if r["correctness_score"] is not None]
         ),
         "adversarial_decision_accuracy": accuracy(adversarial_results),
         "adversarial_hallucination_rate": complement(adversarial_groundedness),
@@ -223,8 +285,11 @@ def run_full_report(golden_n: int | None = None, adversarial_n: int | None = Non
                 }.items()
             )
         },
-        "false_escalation_rate": 0.0,
-        "deferral_precision": None,
+        "false_escalation_rate": false_escalation_rate,
+        "deferral_precision": deferral_precision,
+        "n_policy_overrides": sum(
+            1 for r in golden_results + adversarial_results if r.get("policy_override")
+        ),
         "golden_results": golden_results,
         "adversarial_results": adversarial_results,
     }
@@ -260,12 +325,18 @@ if __name__ == "__main__":
     parser.add_argument("--adversarial-n", type=int, default=None, help="Score only N adversarial items (stratified by category)")
     parser.add_argument("--seed", type=int, default=0, help="Sampling seed, for reproducible subsets")
     parser.add_argument("--offline", action="store_true", help="Force the offline report even if a key is present")
+    parser.add_argument("--resolver", choices=["naive", "gated"], default="naive", help="Which resolver to evaluate")
+    parser.add_argument("--no-judge", action="store_true", help="Skip LLM-judge scorers; decision metrics only (1 call/item)")
     args = parser.parse_args()
 
     if args.offline or not config.api_key_present():
         report = run_offline_report()
         save_report(report, "baseline_offline.json")
     else:
-        report = run_full_report(args.golden_n, args.adversarial_n, args.seed)
-        save_report(report, "baseline_sampled.json" if report["sampled"] else "baseline_full.json")
+        report = run_full_report(
+            args.golden_n, args.adversarial_n, args.seed, args.resolver, not args.no_judge
+        )
+        stem = "gated" if args.resolver == "gated" else "baseline"
+        suffix = "sampled" if report["sampled"] else "full"
+        save_report(report, f"{stem}_{suffix}.json")
     print_summary(report)
