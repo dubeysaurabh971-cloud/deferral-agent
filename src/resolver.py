@@ -48,7 +48,11 @@ class NaiveResolver:
             },
         }
         trace.log_trace(record)
-        return record
+
+        # The trace record keeps only chunk metadata -- full chunk text would add ~10k chars
+        # per line to traces/runs.jsonl. But the groundedness judge needs the actual text to
+        # check claims against, so hand the caller the unabridged chunks in-memory.
+        return {**record, "retrieved_chunks": chunks}
 
 
 if __name__ == "__main__":
