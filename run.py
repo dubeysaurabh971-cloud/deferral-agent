@@ -12,7 +12,7 @@ from src.tickets import load_tickets, write_tickets_jsonl
 
 def run_interactive() -> None:
     if not config.api_key_present():
-        key_name = "XAI_API_KEY" if config.LLM_PROVIDER == "xai" else "ANTHROPIC_API_KEY"
+        key_name = config.api_key_env_name()
         print(
             f"{key_name} is not set (LLM_PROVIDER={config.LLM_PROVIDER}). Copy .env.example "
             "to .env and add your key, then re-run.",

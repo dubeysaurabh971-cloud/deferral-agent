@@ -19,10 +19,18 @@ class LLMUsage:
     output_tokens: int
 
 
-def _xai_client():
+def _compat_client():
+    """Client for any OpenAI-wire-format provider (xAI, Gemini) -- base_url is the only diff.
+
+    max_retries is well above the SDK default of 2: free-tier Gemini returns transient 503s
+    under load, and an eval run makes hundreds of serial calls, so a single unlucky 503
+    would otherwise abort the whole report. The SDK backs off exponentially with jitter and
+    honours retry-after, so this costs nothing when the provider is healthy.
+    """
     from openai import OpenAI
 
-    return OpenAI(api_key=config.XAI_API_KEY, base_url=config.XAI_BASE_URL)
+    api_key, base_url, _, _ = config.OPENAI_COMPATIBLE[config.LLM_PROVIDER]
+    return OpenAI(api_key=api_key, base_url=base_url, max_retries=8, timeout=120.0)
 
 
 def _anthropic_client():
@@ -31,12 +39,13 @@ def _anthropic_client():
     return anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
 
-def chat(system: str, user: str, max_tokens: int = 1024) -> tuple[str, LLMUsage]:
-    """Plain-text completion."""
-    if config.LLM_PROVIDER == "xai":
-        client = _xai_client()
+def chat(system: str, user: str, max_tokens: int = 1024, model: str | None = None) -> tuple[str, LLMUsage]:
+    """Plain-text completion. `model` defaults to the configured resolver model."""
+    model = model or config.active_model()
+    if config.LLM_PROVIDER in config.OPENAI_COMPATIBLE:
+        client = _compat_client()
         response = client.chat.completions.create(
-            model=config.active_model(),
+            model=model,
             max_tokens=max_tokens,
             messages=[
                 {"role": "system", "content": system},
@@ -49,7 +58,7 @@ def chat(system: str, user: str, max_tokens: int = 1024) -> tuple[str, LLMUsage]
 
     client = _anthropic_client()
     response = client.messages.create(
-        model=config.active_model(),
+        model=model,
         max_tokens=max_tokens,
         system=system,
         messages=[{"role": "user", "content": user}],
@@ -59,17 +68,20 @@ def chat(system: str, user: str, max_tokens: int = 1024) -> tuple[str, LLMUsage]
     return text, usage
 
 
-def chat_structured(user: str, schema_model: type[BaseModel], max_tokens: int = 1024) -> BaseModel:
+def chat_structured(
+    user: str, schema_model: type[BaseModel], max_tokens: int = 1024, model: str | None = None
+) -> BaseModel:
     """Structured-output completion, validated against a Pydantic schema."""
-    if config.LLM_PROVIDER == "xai":
-        client = _xai_client()
+    model = model or config.active_model()
+    if config.LLM_PROVIDER in config.OPENAI_COMPATIBLE:
+        client = _compat_client()
         schema_json = schema_model.model_json_schema()
         system = (
             "Respond with ONLY a single valid JSON object matching this JSON schema exactly "
             "-- no markdown fences, no commentary before or after it:\n" + json.dumps(schema_json)
         )
         response = client.chat.completions.create(
-            model=config.active_model(),
+            model=model,
             max_tokens=max_tokens,
             response_format={"type": "json_object"},
             messages=[
@@ -83,7 +95,7 @@ def chat_structured(user: str, schema_model: type[BaseModel], max_tokens: int = 
 
     client = _anthropic_client()
     response = client.messages.parse(
-        model=config.active_model(),
+        model=model,
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": user}],
         output_format=schema_model,

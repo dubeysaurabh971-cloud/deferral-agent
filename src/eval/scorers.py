@@ -6,7 +6,7 @@ ahead of the number materially improves judge consistency.
 """
 from pydantic import BaseModel, Field
 
-from src import llm_client
+from src import config, llm_client
 
 
 class GroundednessVerdict(BaseModel):
@@ -28,7 +28,7 @@ def score_groundedness(answer: str, chunks: list[dict]) -> GroundednessVerdict:
         "excerpts above? Judge strictly: an unsupported claim, even a plausible-sounding "
         "one, makes the answer ungrounded."
     )
-    return llm_client.chat_structured(prompt, GroundednessVerdict)
+    return llm_client.chat_structured(prompt, GroundednessVerdict, model=config.judge_model())
 
 
 def score_correctness(question: str, answer: str, reference_answer: str) -> CorrectnessVerdict:
@@ -40,7 +40,7 @@ def score_correctness(question: str, answer: str, reference_answer: str) -> Corr
         "1=wrong or irrelevant, 3=partially correct or incomplete, 5=fully correct and complete. "
         "The agent's answer doesn't need to match the reference's wording, only its substance."
     )
-    return llm_client.chat_structured(prompt, CorrectnessVerdict)
+    return llm_client.chat_structured(prompt, CorrectnessVerdict, model=config.judge_model())
 
 
 def decision_accuracy(predicted_decision: str, expected_decision: str) -> bool:
