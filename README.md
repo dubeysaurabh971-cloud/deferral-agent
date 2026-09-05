@@ -3,6 +3,19 @@
 A support-ticket RAG agent that decides whether to answer, ask, or hand off — and an honest
 measurement of what that costs.
 
+> **What this proves.** A single structured self-assessment call can near-eliminate confidently
+> wrong answers in support RAG — false resolutions **58 → 4** — and this trade-off has to be
+> scored on asymmetric error cost, not raw accuracy: a wrong authoritative answer and a needless
+> handoff are not the same mistake.
+>
+> **What I would ship.** Not this build. My bar is false escalation **under ~15%** while holding
+> false resolutions in low single digits; this sits at 51%, so it deflects too little to be worth
+> deploying. The cause is diagnosed (finding 2) but **not cheaply fixable** — a targeted prompt
+> fix aimed at exactly it made things worse (finding 3), which is the most useful thing I learned.
+>
+> The self-critique below is deliberate. Read it as scope of what was measured, not as a verdict
+> that the approach failed.
+
 A retrieval agent that always answers is dangerous on exactly the tickets that matter: it
 produces confident, well-cited prose for questions its knowledge base cannot answer. This
 project builds a deferral gate on top of a naive RAG baseline and measures both sides of the
@@ -11,9 +24,9 @@ trade: what deferring buys, and what it costs.
 **Short version: the gate cuts false resolutions from 58 to 4 — a 93% reduction — and takes
 adversarial decision accuracy from 3.3% to 71.7%. It pays for that by deferring too readily,
 refusing 51% of answerable tickets.** Whether that is a good trade depends on what a wrong
-confident answer costs relative to an unnecessary handoff; the break-even is 1.19, and real
-support economics are nowhere near that close. The over-deferral is a real defect with a
-diagnosed cause, and this document covers both sides.
+confident answer costs relative to an unnecessary handoff. That break-even is 1.19, computed
+from the measured error counts; the cost ratio itself this project does not measure. The
+over-deferral is a real defect with a diagnosed cause, and this document covers both sides.
 
 ## The problem
 
@@ -53,9 +66,15 @@ costs a few minutes of staff time. Score the two error types separately and the 
 | Misrouted deferrals (right to defer, wrong lane) | 0 | 11 |
 
 Letting a false resolution cost `C` times an unnecessary handoff, **the gate wins for any
-C > 1.19.** At C=5 the baseline's error cost is 290 against the gate's 84. The honest caveat is
-that this project never measured `C` — but it does not need to be measured precisely to clear
-1.19.
+C > 1.19.** At C=5 the baseline's error cost is 290 against the gate's 84.
+
+Be precise about which half of that is evidence. The **1.19 is computed** — it falls directly out
+of the measured error counts in the table above, and it is not a guess. **`C` itself is not
+measured anywhere in this project.** Whether real support economics clear 1.19 is an assumption I
+find easy to believe — a wrong authoritative answer reaches the customer, gets acted on, and
+tends to generate a second contact, while a needless handoff costs staff minutes — but believing
+it is not the same as having measured it. Deciding this properly needs deflection-cost and
+bad-answer-cost figures from the organisation actually running the queue.
 
 By adversarial category:
 
@@ -143,10 +162,43 @@ golden tickets the gate deferred 51: **38 CLARIFY, 13 ESCALATE**. The dominant m
 could see the answer and asked a question anyway.
 
 That is the mirror of finding 1. Step 1's TEST B now correctly stops it asking when the KB is
-silent; TEST A is still too permissive when the KB is not. This is the single highest-value fix
-remaining, and it is worth roughly 22 points of false escalation.
+silent; TEST A is still too permissive when the KB is not. On paper this is the
+highest-value fix remaining, worth roughly 22 points of false escalation — which is exactly what
+finding 3 set out to collect, and did not.
 
-**3. The policy layer is very nearly inert.** `n_policy_overrides` is **1 across 160 items** — a
+**3. The obvious fix for finding 2 made it worse. This is the most useful result here.** TEST A
+let the model invent a plausible follow-up question rather than find a necessary one, so the
+revision required it to *name the fork*: state two specific competing answers the excerpts
+actually support, plus the detail selecting between them. If it could not name two, the ticket
+was not underspecified.
+
+Measured on both sets against the previous prompt:
+
+| | v3 | v4 (the "fix") |
+|---|---:|---:|
+| Golden decision accuracy | **49%** | 42% |
+| False escalations | **53** | 60 |
+| False resolutions | **4** | 6 |
+| Golden CLARIFY count | **38** | 45 |
+| Adversarial accuracy | 71.7% | 71.7% |
+
+A change aimed squarely at over-clarification produced *more* of it, and left adversarial exactly
+where it was. The plausible reading is that a stricter-sounding bar is still a bar the model can
+argue it has cleared, while the extra paragraph of instruction about when to clarify raised the
+salience of clarifying rather than its cost. Injection moved 20% → 30% and out_of_kb 65% → 60%,
+one item each — noise at n=10 and n=20, not worth 7 points of golden accuracy.
+
+**Reverted.** The full v4 report is kept in `eval_results/gated_both_160_promptv4.json`.
+
+The conclusion is not "prompt engineering does not work" — findings 1 and 2 were both won with
+prompt changes. It is narrower and more useful: **this particular miscalibration does not respond
+to being told about itself.** Getting the deferral threshold right probably needs a mechanism that
+does not depend on the model's own judgement of its own judgement — few-shot examples of correct
+RESOLVE decisions, a calibrated threshold on something external to the model, or a second pass
+that only reviews clarification decisions. That is a design change, not a wording change, and it
+is where I would start next.
+
+**4. The policy layer is very nearly inert.** `n_policy_overrides` is **1 across 160 items** — a
 single `partial`-coverage downgrade. The sweep confirms it: flipping `escalate_on_partial` moves
 golden accuracy 49% → 50% and adversarial not at all.
 
@@ -156,12 +208,12 @@ is confident mislabeling. The gate's value comes almost entirely from the model'
 self-assessment, not from the deterministic layer beneath it. The layer is cheap and
 one-directional so it stays — but a design resting on it would be resting on nothing.
 
-**4. Injection detection and injection disposition are different problems.** The gate flags
+**5. Injection detection and injection disposition are different problems.** The gate flags
 `injection_attempt_detected=True` on **10 of 10** injection items — perfect detection. It then
 answers 8 of them with `CLARIFY` regardless of what the underlying request needed. Recognising an
 attack is far easier than continuing to reason normally once you have.
 
-**5. Retrieval scores carry no confidence signal.** An earlier approach thresholded on retrieval
+**6. Retrieval scores carry no confidence signal.** An earlier approach thresholded on retrieval
 score. RRF scores encode *rank*, not match quality — a chunk ranked #1 by both retrievers always
 scores 0.0164, whether it answers the question or is merely the least-bad of 10,068. Measured,
 near_miss tickets score *higher* than golden ones, and the best threshold tuned directly on the
@@ -169,18 +221,28 @@ test set reached only 72.5%. The judgement has to be made by something that read
 
 ## What I would do next
 
-1. **Tighten TEST A on answerable tickets.** 22 full-coverage clarifications are the largest
-   single block of error in the system.
-2. **Fix injection disposition.** Detection is solved; grade the request underneath.
-3. **Re-measure both sets together.** Adversarial-only iteration is what produced a gate that
-   looks excellent on one set and loses to the baseline overall.
+1. **Attack over-deferral with a mechanism, not wording.** Finding 3 rules out the cheap version.
+   Candidates, roughly in order of how much I would trust them: few-shot examples of correct
+   RESOLVE decisions drawn from the golden set; a second pass that reviews only CLARIFY decisions
+   and asks whether the question was necessary; a calibrated threshold on something external to
+   the model's own self-assessment.
+2. **Fix injection disposition.** Detection is solved (10/10); disposition is not (2/10). Making
+   it a procedure — restate the request with instructions stripped, then grade the restatement —
+   moved it one item, which is nothing at n=10. Needs a bigger injection set before it can even
+   be measured properly.
+3. **Get a real cost ratio.** The break-even is 1.19 and the whole ship/no-ship argument turns on
+   whether reality clears it. That is a question for whoever owns the support queue, not a
+   modelling question.
+4. **Always measure both sets.** Two of the three prompt revisions here were tuned on adversarial
+   alone, and both times the golden number moved in a direction I did not see coming.
 
 ## Limitations
 
 - **Single model, single run.** No seeds, repeats, or confidence intervals. Decision accuracy on
   60 items carries roughly ±12 points; category-level numbers (n=10–20) are directional only.
-- **Golden measured for one prompt revision.** Adversarial has v1 and v3; golden has only v3, so
-  the effect of the step-1 fix on false escalation is unmeasured. It may have made it worse.
+- **Prompt revisions measured unevenly.** v1 and v3 have adversarial numbers; only v3 and v4 were
+  measured on both sets. The effect of the v1 → v3 step-1 fix on false escalation was never
+  measured, and given what v4 did, it may well have made it worse.
 - **Groundedness and correctness not measured at scale.** They ran on 6 golden items during
   development (groundedness 1.0, mean correctness 4.67/5) — a smoke signal, not a result.
 - **The 160-item mix is arbitrary.** The combined 57.5% assumes a 100:60 answerable-to-adversarial

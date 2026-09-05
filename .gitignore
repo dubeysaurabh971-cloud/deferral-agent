@@ -6,3 +6,7 @@ data/chroma/
 data/kb/chunks.jsonl
 traces/*.jsonl
 .pytest_cache/
+
+# harness scratch output -- latest run only; named archives in eval_results/ are the record
+eval_results/gated_full.json
+eval_results/gated_sampled.json
