@@ -8,10 +8,12 @@ produces confident, well-cited prose for questions its knowledge base cannot ans
 project builds a deferral gate on top of a naive RAG baseline and measures both sides of the
 trade: what deferring buys, and what it costs.
 
-**Short version: the gate learns to decline — adversarial decision accuracy goes 3.3% → 71.7% —
-but it defers far too readily, refusing 51% of answerable tickets. On a combined 160-item set it
-is currently a net regression against the baseline it replaces.** That is the interesting
-result, and the rest of this document is about why.
+**Short version: the gate cuts false resolutions from 58 to 4 — a 93% reduction — and takes
+adversarial decision accuracy from 3.3% to 71.7%. It pays for that by deferring too readily,
+refusing 51% of answerable tickets.** Whether that is a good trade depends on what a wrong
+confident answer costs relative to an unnecessary handoff; the break-even is 1.19, and real
+support economics are nowhere near that close. The over-deferral is a real defect with a
+diagnosed cause, and this document covers both sides.
 
 ## The problem
 
@@ -29,15 +31,31 @@ Both sets, same model (`gpt-5-mini`, `reasoning_effort=low`), one pass each.
 
 | metric | baseline | gated | |
 |---|---:|---:|---|
-| Adversarial decision accuracy (n=60) | 3.3% | **71.7%** | ✅ the gate works |
+| **False resolutions** (answered when it should have deferred) | **58** | **4** | ✅ −93% |
+| Adversarial decision accuracy (n=60) | 3.3% | **71.7%** | ✅ |
 | Golden decision accuracy (n=100) | 100% | **49%** | ❌ the price |
 | False escalation rate | 0% | **51%** | ❌ |
 | Deferral precision (both sets) | — | 50.5% | |
-| **Overall, all 160 items** | **63.7%** | **57.5%** | ❌ net regression |
+| Raw decision accuracy, all 160 items | 63.7% | 57.5% | see below |
 
 The baseline's 100% golden accuracy and 0% false-escalation rate are trivial, not virtuous: a
-resolver that never defers cannot defer wrongly. But that is exactly why the combined number
-matters — it is the only view in which both failure modes are priced.
+resolver that never defers cannot defer wrongly. It is a floor, not a competitor.
+
+The last row deserves scepticism rather than a verdict. Raw accuracy counts a false resolution
+and an unnecessary handoff as equally bad, which no support organisation would accept — a wrong
+authoritative answer reaches the customer and generates a second ticket, while a needless handoff
+costs a few minutes of staff time. Score the two error types separately and the picture inverts:
+
+| error type (160 items) | baseline | gated |
+|---|---:|---:|
+| False resolutions | 58 | **4** |
+| False escalations | 0 | 53 |
+| Misrouted deferrals (right to defer, wrong lane) | 0 | 11 |
+
+Letting a false resolution cost `C` times an unnecessary handoff, **the gate wins for any
+C > 1.19.** At C=5 the baseline's error cost is 290 against the gate's 84. The honest caveat is
+that this project never measured `C` — but it does not need to be measured precisely to clear
+1.19.
 
 By adversarial category:
 
@@ -51,19 +69,19 @@ By adversarial category:
 
 ### Is this a good trade?
 
-Not yet, and the honest answer depends on a number this project does not have: the relative cost
-of a wrong confident answer versus an unnecessary handoff. In support, false resolutions are
-usually the more expensive error — they reach the customer as authoritative and wrong — which is
-the case for accepting *some* false escalation.
+On error cost, yes, and not narrowly — see the break-even above. The gate eliminates 54 of the
+baseline's 58 false resolutions, which is the failure this system exists to prevent.
 
-But 51% is not *some*. At that rate you have automated almost nothing: half the answerable
-tickets still reach a human, and you are paying LLM inference for the privilege. The gate has
-learned it is allowed to decline and has not learned when to stop.
+On automation rate, no. At 51% false escalation half the answerable tickets still reach a human
+and you are paying LLM inference for the privilege. The gate has learned it is allowed to decline
+and has not learned when to stop. Both things are true, and shipping this would mean accepting a
+deflection rate of roughly 49% in exchange for near-elimination of confidently wrong answers.
 
-Note also what a single aggregate can hide. Quoted alone, deferral precision on the adversarial
-set is **96.4%** — when it defers there, it is nearly always right. Across both sets it is
-**50.5%**, because the 51 unwarranted golden deferrals only appear once answerable tickets are in
-the denominator. The flattering number is not wrong; it is just not the whole picture.
+Note also what a single aggregate can hide in the other direction. Quoted alone, deferral
+precision on the adversarial set is **96.4%** — when it defers there, it is nearly always right.
+Across both sets it is **50.5%**, because the 51 unwarranted golden deferrals only enter the
+denominator once answerable tickets are included. The flattering number is not wrong; it is just
+not the whole picture.
 
 ## How it works
 
