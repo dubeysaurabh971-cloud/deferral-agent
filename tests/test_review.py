@@ -129,3 +129,34 @@ def test_review_can_be_disabled():
     r = GatedResolver.__new__(GatedResolver)
     r.review_clarifications = False
     assert r.review_clarifications is False
+
+
+# --- configuration is an economics question, not a model property ------------------
+
+def test_break_even_matches_the_measured_cost_curves():
+    """gate alone = 4C+64, governed reviewer = 5C+57; equal at C=7."""
+    C = review.REVIEW_BREAK_EVEN_C
+    assert 4 * C + 64 == pytest.approx(5 * C + 57)
+
+
+@pytest.mark.parametrize("c,expected", [(1.0, True), (3.0, True), (6.9, True), (7.1, False), (10.0, False)])
+def test_review_is_worthwhile(c, expected):
+    assert review.review_is_worthwhile(c) is expected
+
+
+@pytest.mark.parametrize(
+    "kwargs,want",
+    [
+        ({"cost_ratio": 3.0}, True),                              # cheap bad answers -> review
+        ({"cost_ratio": 10.0}, False),                            # expensive bad answers -> don't
+        ({}, True),                                               # default assumes C < 7
+        ({"cost_ratio": 10.0, "review_clarifications": True}, True),   # explicit flag wins
+        ({"cost_ratio": 1.0, "review_clarifications": False}, False),  # explicit flag wins
+    ],
+)
+def test_cost_ratio_selects_the_configuration(monkeypatch, kwargs, want):
+    """Exercises the real constructor, with the retriever stubbed out."""
+    import src.resolver as resolver_mod
+
+    monkeypatch.setattr(resolver_mod, "HybridRetriever", lambda: object())
+    assert GatedResolver(**kwargs).review_clarifications is want

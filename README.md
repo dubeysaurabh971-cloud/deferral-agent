@@ -3,16 +3,24 @@
 A support-ticket RAG agent that decides whether to answer, ask, or hand off — and an honest
 measurement of what that costs.
 
+**[Browse all 160 decisions →](https://dubeysaurabh971-cloud.github.io/deferral-agent/)** — every
+ticket the gate answered, asked about, or handed off, with its reasoning and coverage call. No API
+key, no backend; generated from the trace log.
+
 > **What this proves.** A single structured self-assessment call can near-eliminate confidently
 > wrong answers in support RAG — false resolutions **58 → 4** — and this trade-off has to be
 > scored on asymmetric error cost, not raw accuracy: a wrong authoritative answer and a needless
 > handoff are not the same mistake.
 >
 > **What I would ship.** Not this build. My bar is false escalation **under ~15%** while holding
-> false resolutions in low single digits; the best configuration here reaches 46%, so it still
+> false resolutions in low single digits; the best configuration here reaches **44%**, so it
 > deflects too little to deploy. Getting there took two attempts: a prompt fix aimed straight at
 > the problem made it *worse* (finding 3), and only a second-stage mechanism moved it (finding 4).
 > The gap between those two attempts is the most useful thing in this repo.
+>
+> **What it depends on.** Every claim here is conditional on `C`, the cost of a wrong confident
+> answer in units of an unnecessary handoff. The gate beats the baseline for C > 1.19; the shipped
+> configuration is the right one only for 1.75 < C < 7. That window is stated, not assumed away.
 >
 > The self-critique below is deliberate. Read it as scope of what was measured, not as a verdict
 > that the approach failed.
@@ -24,10 +32,11 @@ trade: what deferring buys, and what it costs.
 
 **Short version: the gate cuts false resolutions from 58 to 4 — a 93% reduction — and takes
 adversarial decision accuracy from 3.3% to 71.7%. It pays for that by deferring too readily,
-refusing 51% of answerable tickets.** Whether that is a good trade depends on what a wrong
-confident answer costs relative to an unnecessary handoff. That break-even is 1.19, computed
-from the measured error counts; the cost ratio itself this project does not measure. The
-over-deferral is a real defect with a diagnosed cause, and this document covers both sides.
+refusing 44% of answerable tickets even in its best configuration.** Whether that is a good trade
+depends on what a wrong confident answer costs relative to an unnecessary handoff. That
+break-even is 1.19, computed from the measured error counts; the ratio itself this project does
+not measure. The over-deferral is a real defect with a diagnosed cause, and this document covers
+both sides.
 
 ## The problem
 
@@ -45,81 +54,92 @@ Both sets, same model (`gpt-5-mini`, `reasoning_effort=low`), one pass each.
 
 | metric | baseline | gate | gate + reviewer |
 |---|---:|---:|---:|
-| **False resolutions** (answered when it should have deferred) | 58 | **4** | **5** |
+| **False resolutions** (answered when it should have deferred) | 58 | **4** | 5 |
+| False escalations (deferred an answerable ticket) | 0 | 53 | **46** |
+| Misrouted deferrals (right to defer, wrong lane) | 0 | 11 | 11 |
 | Adversarial decision accuracy (n=60) | 3.3% | **71.7%** | 70.0% |
 | Golden decision accuracy (n=100) | 100% | 49% | **56%** |
-| False escalations | 0 | 53 | **46** |
-| Misrouted deferrals | 0 | 11 | 11 |
+| Raw decision accuracy (all 160) | **63.7%** | 57.5% | 61.3% |
+| Deferral precision (both sets) | — | 50.5% | 53.5% |
 
 The third column adds a second-stage **clarification reviewer** (finding 4): a separate call that
-looks only at CLARIFY decisions and asks whether the question was necessary. It buys 7 points of
-golden accuracy for 1 extra false resolution. It is on by default; `GatedResolver(
-review_clarifications=False)` turns it off.
+sees only CLARIFY decisions and asks whether that question was necessary. It buys seven fewer
+false escalations for one extra false resolution.
 
 The baseline's 100% golden accuracy and 0% false-escalation rate are trivial, not virtuous: a
 resolver that never defers cannot defer wrongly. It is a floor, not a competitor.
 
-The last row deserves scepticism rather than a verdict. Raw accuracy counts a false resolution
-and an unnecessary handoff as equally bad, which no support organisation would accept — a wrong
-authoritative answer reaches the customer and generates a second ticket, while a needless handoff
-costs a few minutes of staff time. Score the two error types separately and the picture inverts:
+**Raw decision accuracy is the wrong metric here, and it appears in that table only to be argued
+with.** It counts a false resolution and an unnecessary handoff as equally bad — a wrong
+authoritative answer reaches the customer, gets acted on and tends to generate a second contact,
+while a needless handoff costs staff minutes. On raw accuracy the baseline "wins" at 63.7%, which
+is how a system that cannot decline at all beats one that can.
 
-| error type (160 items) | baseline | gate | gate + reviewer |
-|---|---:|---:|---:|
-| False resolutions | 58 | 4 | 5 |
-| False escalations | 0 | 53 | 46 |
-| Misrouted deferrals (right to defer, wrong lane) | 0 | 11 | 11 |
+Deferral precision needs the same care in the other direction. On the adversarial set alone the
+gate+reviewer scores **96.4%** — when it defers there, it is nearly always right. Across both sets
+it is **53.5%**, because the 46 unwarranted deferrals (44 answerable golden tickets, plus 2
+injection tickets that should have been resolved) only enter the denominator once answerable
+tickets are counted. Both numbers are true; only the second is honest on its own.
 
-Letting a false resolution cost `C` times an unnecessary handoff, **the gate wins for any
-C > 1.19.** At C=5 the baseline's error cost is 290 against the gate's 84.
+### Choosing a configuration is an economics question
 
-The same arithmetic is what settles the reviewer's configuration, and it is worth seeing, because
-the ungoverned version looks better on accuracy and is worse where it counts:
+Let `C` be the cost of one false resolution in units of one unnecessary handoff. Total error cost
+on these 160 items is linear in `C`, and the three configurations rank differently depending on it:
 
-| total error cost | C=1 | C=2 | C=3 | C=5 | C=10 |
-|---|---:|---:|---:|---:|---:|
-| gate alone | 68 | 72 | 76 | 84 | **104** |
-| + reviewer, ungoverned | **59** | 68 | 77 | 95 | 140 |
-| + reviewer, governed | 62 | **67** | **72** | **82** | 107 |
+| configuration | error cost | C=1 | C=2 | C=3 | C=5 | C=7 | C=10 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| baseline | 58C | 58 | 116 | 174 | 290 | 406 | 580 |
+| gate alone | 4C + 64 | 68 | 72 | 76 | 84 | **92** | **104** |
+| + reviewer, ungoverned | 9C + 50 | **59** | 68 | 77 | 95 | 113 | 140 |
+| + reviewer, governed | 5C + 57 | 62 | **67** | **72** | **82** | **92** | 107 |
 
-The ungoverned reviewer flips more clarifications and wins on raw accuracy, and it is the wrong
-choice for any C above 2 — it buys golden accuracy with exactly the error this system exists to
-prevent. The governed one is better everywhere up to C≈7. Picking it on accuracy alone would have
-picked wrong.
+Three things fall out of this, and only the first was obvious in advance:
 
-Be precise about which half of that is evidence. The **1.19 is computed** — it falls directly out
-of the measured error counts in the table above, and it is not a guess. **`C` itself is not
-measured anywhere in this project.** Whether real support economics clear 1.19 is an assumption I
-find easy to believe — a wrong authoritative answer reaches the customer, gets acted on, and
-tends to generate a second contact, while a needless handoff costs staff minutes — but believing
-it is not the same as having measured it. Deciding this properly needs deflection-cost and
-bad-answer-cost figures from the organisation actually running the queue.
+1. **The gate beats the baseline for any C > 1.19.** That threshold is computed from the measured
+   error counts; `C` itself is not measured anywhere in this project. Whether real support
+   economics clear 1.19 is an assumption I find easy to believe but did not test — settling it
+   needs deflection-cost and bad-answer-cost figures from whoever owns the queue.
+2. **The ungoverned reviewer wins on raw accuracy (59% golden) and is the wrong choice above
+   C = 2.** It buys golden accuracy with the exact error the system exists to prevent. Selecting
+   on accuracy would have selected it.
+3. **The governed reviewer is only the best choice for 1.75 < C < 7.** Below 1.75 the ungoverned
+   variant is better; above 7 the gate alone is better, because one extra false resolution stops
+   being worth seven fewer handoffs.
+
+That last point constrains the default. `GatedResolver` runs the reviewer unless told otherwise,
+which **assumes C < 7** — and an organisation that treats a confidently wrong answer as ten times
+worse than a needless handoff is outside that window and should turn it off. So the ratio is a
+constructor argument rather than a hardcoded belief:
+
+```python
+GatedResolver(cost_ratio=3)      # reviewer on  -- bad answers are cheap-ish
+GatedResolver(cost_ratio=10)     # reviewer off -- bad answers are expensive
+GatedResolver()                  # reviewer on  -- the C < 7 default
+```
+
+`review.REVIEW_BREAK_EVEN_C` holds the 7.0, derived from the two cost curves above and pinned by a
+test. It is measured on this eval set, not a general constant, and it inherits the wide confidence
+intervals of a single 160-item run.
 
 By adversarial category:
 
-| category | n | what it tests | baseline | gated |
-|---|---:|---|---:|---:|
-| ambiguous | 20 | underspecified; needs a question | 0% | **100%** |
-| near_miss | 10 | topic covered, specific fact absent | 0% | **80%** |
-| out_of_kb | 20 | KB has nothing on the subject | 0% | **65%** |
-| injection | 10 | prompt injection wrapping a real request | 20% | 20% |
-| **overall** | **60** | | **3.3%** | **71.7%** |
+| category | n | what it tests | baseline | gate | + reviewer |
+|---|---:|---|---:|---:|---:|
+| ambiguous | 20 | underspecified; needs a question | 0% | **100%** | 95% |
+| near_miss | 10 | topic covered, specific fact absent | 0% | **80%** | **80%** |
+| out_of_kb | 20 | KB has nothing on the subject | 0% | **65%** | **65%** |
+| injection | 10 | prompt injection wrapping a real request | 20% | 20% | 20% |
+| **overall** | **60** | | **3.3%** | **71.7%** | 70.0% |
 
 ### Is this a good trade?
 
-On error cost, yes, and not narrowly — see the break-even above. The gate eliminates 54 of the
-baseline's 58 false resolutions, which is the failure this system exists to prevent.
+On error cost, yes, within the window above. The gate eliminates 54 of the baseline's 58 false
+resolutions, which is the failure this system exists to prevent.
 
-On automation rate, no. Even with the reviewer, 46% of answerable tickets still reach a human and
+On automation rate, no. Even with the reviewer, 44% of answerable tickets still reach a human and
 you are paying LLM inference for the privilege. The gate has learned it is allowed to decline and
-has only partly learned when to stop. Both things are true, and shipping this would mean accepting
-a deflection rate of roughly 56% in exchange for near-elimination of confidently wrong answers.
-
-Note also what a single aggregate can hide in the other direction. Quoted alone, deferral
-precision on the adversarial set is **96.4%** — when it defers there, it is nearly always right.
-Across both sets it is **50.5%**, because the 51 unwarranted golden deferrals only enter the
-denominator once answerable tickets are included. The flattering number is not wrong; it is just
-not the whole picture.
+has only partly learned when to stop. Shipping this would mean accepting a deflection rate of
+roughly 56% in exchange for near-elimination of confidently wrong answers.
 
 ## How it works
 
@@ -314,8 +334,9 @@ test set reached only 72.5%. The judgement has to be made by something that read
   measured, and given what v4 did, it may well have made it worse.
 - **Groundedness and correctness not measured at scale.** They ran on 6 golden items during
   development (groundedness 1.0, mean correctness 4.67/5) — a smoke signal, not a result.
-- **The 160-item mix is arbitrary.** The combined 57.5% assumes a 100:60 answerable-to-adversarial
-  ratio. Real traffic has its own ratio, and the comparison moves with it.
+- **The 160-item mix is arbitrary.** Every combined figure — raw accuracy, deferral precision, and
+  the cost curves that set the 1.19 and 7.0 thresholds — assumes a 100:60 answerable-to-adversarial
+  ratio. Real traffic has its own ratio, and all of it moves with it.
 
 ## Running it
 

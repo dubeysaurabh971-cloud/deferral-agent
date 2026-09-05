@@ -88,6 +88,33 @@ def review_clarification(
     return llm_client.chat_structured(prompt, ClarificationReview, max_tokens=4096)
 
 
+# Whether the reviewer is worth running is not a fact about the reviewer -- it depends on what a
+# false resolution costs relative to an unnecessary handoff. Writing C for that ratio, total error
+# cost on this 160-item eval set is linear in C:
+#
+#     gate alone             4C + 64
+#     reviewer, governed     5C + 57      <- the shipped configuration
+#     reviewer, ungoverned   9C + 50      <- more flips, no policy re-check; not offered
+#
+# The reviewer trades one extra false resolution for seven fewer false escalations, so it wins
+# while C < 7 and loses above it. It also only beats the ungoverned variant above C = 1.75, which
+# is why the ungoverned one is not exposed: below 1.75 you would want the other one anyway.
+#
+# 7.0 is measured on this eval set, not a general constant, and both bounds inherit the wide
+# confidence intervals of a single 160-item run.
+REVIEW_BREAK_EVEN_C = 7.0
+
+
+def review_is_worthwhile(cost_ratio: float) -> bool:
+    """Does the clarification reviewer lower expected error cost at this cost ratio?
+
+    cost_ratio is C = cost(false resolution) / cost(unnecessary handoff). A support org that
+    considers a confidently wrong answer ten times worse than a needless handoff should run
+    without the reviewer; one that considers it three times worse should run with it.
+    """
+    return cost_ratio < REVIEW_BREAK_EVEN_C
+
+
 def apply_review(review: ClarificationReview) -> tuple[str, str | None]:
     """Map a review to (decision, answer_override).
 

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deferral Decisions</title>
+<meta name="description" content="All 160 scored decisions from the deferral-agent evaluation — what the gate answered, asked, or handed off, and where it was wrong.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#FAFBFC; --surface:#FFFFFF; --sunken:#F2F5F7;
+  --ink:#101820; --muted:#5C6A76; --faint:#8B98A4;
+  --line:#E2E8ED; --line-strong:#CBD5DD;
+  --accent:#16697A; --accent-soft:#E4F0F3; --on-accent:#FFFFFF;
+  --resolve:#16794F; --resolve-soft:#E3F2EA;
+  --clarify:#8A5D06; --clarify-soft:#F8EEDA;
+  --escalate:#5B44A0; --escalate-soft:#EDE9F8;
+  --err:#B3261E; --err-soft:#FBE9E7;
+  --shadow:0 1px 2px rgba(16,24,32,.06),0 1px 8px rgba(16,24,32,.04);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --display:"Archivo","IBM Plex Sans",-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1418; --surface:#161F25; --sunken:#1D272E;
+    --ink:#E7EEF3; --muted:#9AA8B4; --faint:#6E7E8B;
+    --line:#253039; --line-strong:#33414C;
+    --accent:#58B4C7; --accent-soft:#14323A; --on-accent:#0E1418;
+    --resolve:#5FC79A; --resolve-soft:#123124;
+    --clarify:#E0B057; --clarify-soft:#33270A;
+    --escalate:#A794E8; --escalate-soft:#241D3D;
+    --err:#F08C84; --err-soft:#3A1512;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1418; --surface:#161F25; --sunken:#1D272E;
+  --ink:#E7EEF3; --muted:#9AA8B4; --faint:#6E7E8B;
+  --line:#253039; --line-strong:#33414C;
+  --accent:#58B4C7; --accent-soft:#14323A; --on-accent:#0E1418;
+  --resolve:#5FC79A; --resolve-soft:#123124;
+  --clarify:#E0B057; --clarify-soft:#33270A;
+  --escalate:#A794E8; --escalate-soft:#241D3D;
+  --err:#F08C84; --err-soft:#3A1512;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.55;
+  font-variant-numeric:tabular-nums;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 20px}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:3px}
+
+/* ---- masthead ---- */
+header{border-bottom:1px solid var(--line); background:var(--surface)}
+.head-inner{display:flex; flex-direction:column; gap:14px; padding:30px 0 26px}
+.eyebrow{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); margin:0;
+}
+h1{
+  font-family:var(--display); font-weight:700; font-size:clamp(28px,4.2vw,40px);
+  line-height:1.08; letter-spacing:-.02em; margin:0; text-wrap:balance;
+}
+.lede{margin:0; max-width:64ch; color:var(--muted); font-size:16px}
+.lede strong{color:var(--ink); font-weight:600}
+.verdict{
+  display:flex; gap:10px; align-items:flex-start;
+  border-left:3px solid var(--err); background:var(--err-soft);
+  padding:11px 14px; border-radius:0 6px 6px 0; max-width:70ch;
+}
+.verdict p{margin:0; font-size:14px; color:var(--ink)}
+.repo{display:flex; gap:16px; flex-wrap:wrap; font-size:13px; font-family:var(--mono)}
+
+/* ---- metrics ---- */
+.metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:26px 0 0}
+.metric{background:var(--surface); padding:13px 15px; display:flex; flex-direction:column; gap:2px}
+.metric .k{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint)}
+.metric .v{font-family:var(--display); font-size:25px; font-weight:600; line-height:1.15; letter-spacing:-.01em}
+.metric .n{font-size:12px; color:var(--muted)}
+.metric.bad .v{color:var(--err)}
+
+section.controls{padding:22px 0 10px}
+.filters{display:flex; flex-wrap:wrap; gap:7px; align-items:center}
+.flabel{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--faint); margin-right:2px}
+.chip{
+  font:inherit; font-size:13px; padding:5px 11px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--line-strong); background:var(--surface); color:var(--muted);
+}
+.chip:hover{border-color:var(--accent); color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+.chip .ct{font-family:var(--mono); font-size:11px; opacity:.75; margin-left:5px}
+.rowcount{font-size:13px; color:var(--muted); padding:12px 0 0}
+.rowcount b{color:var(--ink); font-weight:600}
+
+/* ---- decision rows ---- */
+.list{display:flex; flex-direction:column; gap:6px; padding:8px 0 60px}
+details.row{
+  background:var(--surface); border:1px solid var(--line); border-radius:7px;
+  border-left:3px solid var(--line-strong); box-shadow:var(--shadow); overflow:hidden;
+}
+details.row[data-err="false_resolution"]{border-left-color:var(--err)}
+details.row[data-err="false_escalation"]{border-left-color:var(--clarify)}
+details.row[data-err="misrouted"]{border-left-color:var(--escalate)}
+details.row[data-ok="true"]{border-left-color:var(--resolve)}
+summary{
+  cursor:pointer; list-style:none; padding:11px 14px;
+  display:grid; grid-template-columns:62px 1fr auto; gap:12px; align-items:center;
+}
+summary::-webkit-details-marker{display:none}
+summary:hover{background:var(--sunken)}
+.id{font-family:var(--mono); font-size:12px; color:var(--faint)}
+.tkt{font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0}
+.tags{display:flex; gap:5px; align-items:center; flex-shrink:0}
+.pill{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase;
+  padding:2.5px 7px; border-radius:4px; white-space:nowrap; font-weight:500;
+}
+.pill.RESOLVE{background:var(--resolve-soft); color:var(--resolve)}
+.pill.CLARIFY{background:var(--clarify-soft); color:var(--clarify)}
+.pill.ESCALATE{background:var(--escalate-soft); color:var(--escalate)}
+.pill.miss{background:var(--err-soft); color:var(--err)}
+.pill.flip{background:var(--accent-soft); color:var(--accent)}
+.arrow{color:var(--faint); font-family:var(--mono); font-size:11px}
+
+.body{border-top:1px solid var(--line); padding:15px 14px 17px; display:flex; flex-direction:column; gap:14px}
+.block h4{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint); margin:0 0 5px; font-weight:500;
+}
+.block p, .block pre{margin:0}
+.quote{
+  font-family:var(--mono); font-size:13px; line-height:1.6; background:var(--sunken);
+  padding:11px 13px; border-radius:5px; white-space:pre-wrap; word-break:break-word;
+  max-width:none; overflow-x:auto;
+}
+.prose{font-size:14px; line-height:1.62; max-width:72ch}
+.facts{display:flex; flex-wrap:wrap; gap:6px}
+.fact{font-family:var(--mono); font-size:11.5px; padding:3px 8px; border-radius:4px;
+  background:var(--sunken); color:var(--muted); border:1px solid var(--line)}
+.fact b{color:var(--ink); font-weight:500}
+.srcs{display:flex; flex-wrap:wrap; gap:5px}
+.src{font-size:11.5px; color:var(--muted); background:var(--sunken); border:1px solid var(--line);
+  padding:2.5px 7px; border-radius:4px}
+.empty{padding:40px 0; text-align:center; color:var(--muted)}
+
+footer{border-top:1px solid var(--line); background:var(--surface); padding:22px 0 34px}
+footer p{margin:0 0 7px; font-size:13px; color:var(--muted); max-width:70ch}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+@media (max-width:620px){
+  summary{grid-template-columns:52px 1fr; row-gap:7px}
+  .tags{grid-column:1/-1}
+  .arrow{display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap head-inner">
+    <p class="eyebrow">deferral-agent · evaluation traces</p>
+    <h1>Every decision the gate made</h1>
+    <p class="lede">
+      All <strong>160 scored tickets</strong> from a support-RAG agent whose job is deciding whether to
+      <strong>answer</strong>, <strong>ask a question</strong>, or <strong>hand off to a human</strong>.
+      The baseline it replaces answered all 160 — including 58 it had no business answering.
+      Open any row for the model's reasoning, its coverage call, and what it actually said.
+    </p>
+    <div class="verdict">
+      <p><strong>This is not a shippable system, and that is the finding.</strong> It cuts confidently-wrong
+      answers from 58 to 5, but refuses 44% of answerable tickets — well above the 15% bar its README sets.
+      The interesting part is the measurement, not the agent.</p>
+    </div>
+    <div class="repo">
+      <a href="https://github.com/dubeysaurabh971-cloud/deferral-agent">github.com/dubeysaurabh971-cloud/deferral-agent</a>
+    </div>
+    <div class="metrics" id="metrics"></div>
+  </div>
+</header>
+
+<section class="controls">
+  <div class="wrap">
+    <div class="filters" id="filters"></div>
+    <p class="rowcount" id="count"></p>
+  </div>
+</section>
+
+<main class="wrap">
+  <div class="list" id="list"></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>How to read this.</strong> The left stripe is the outcome: green correct, red a
+      <em>false resolution</em> (answered when it should have deferred — the worst error), amber a
+      <em>false escalation</em> (deferred an answerable ticket), violet a <em>misrouted</em> deferral
+      (right to defer, wrong lane).</p>
+    <p>Golden tickets are answerable and all expect RESOLVE. Adversarial tickets are hand-written in four
+      categories: <em>ambiguous</em> needs a question, <em>near&nbsp;miss</em> has the topic but not the fact,
+      <em>out&nbsp;of&nbsp;kb</em> isn't covered at all, <em>injection</em> wraps a real request in an attack.</p>
+    <p>One model (gpt-5-mini), one pass, no repeats — category numbers at n=10–20 are directional only.
+      Generated from the trace log by <code>src/eval/export_traces.py</code>.</p>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  var D = window.DECISIONS;
+  if (!D) {
+    document.getElementById('list').innerHTML =
+      '<p class="empty">Could not load <code>data.js</code>. Regenerate it with <code>python -m src.eval.export_traces</code>.</p>';
+    return;
+  }
+  var rows = D.rows, S = D.summary;
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  };
+  var pct = function (x) { return Math.round(x * 100) + '%'; };
+  var count = function (fn) { return rows.filter(fn).length; };
+
+  // ---- metric strip: the error counts are the point, so they lead ----
+  var E = S.errors || {};
+  var metrics = [
+    { k: 'False resolutions', v: E.false_resolution || 0, n: 'answered when it should have deferred', bad: true },
+    { k: 'False escalations', v: E.false_escalation || 0, n: 'deferred an answerable ticket', bad: true },
+    { k: 'Misrouted', v: E.misrouted || 0, n: 'right to defer, wrong lane', bad: true },
+    { k: 'Golden', v: pct(S.golden_accuracy), n: 'n=100, all answerable' },
+    { k: 'Adversarial', v: pct(S.adversarial_accuracy), n: 'n=60, hand-written' },
+    { k: 'Reviewer flips', v: S.reviewer_flips, n: 'CLARIFY overturned to RESOLVE' }
+  ];
+  document.getElementById('metrics').innerHTML = metrics.map(function (m) {
+    return '<div class="metric' + (m.bad ? ' bad' : '') + '"><span class="k">' + esc(m.k) +
+      '</span><span class="v">' + esc(m.v) + '</span><span class="n">' + esc(m.n) + '</span></div>';
+  }).join('');
+
+  // ---- filters: each encodes a question worth asking of this data ----
+  var FILTERS = [
+    { id: 'all', label: 'All', fn: function () { return true; } },
+    { id: 'wrong', label: 'Wrong', fn: function (r) { return !r.correct; } },
+    { id: 'fres', label: 'False resolutions', fn: function (r) { return r.error_type === 'false_resolution'; } },
+    { id: 'fesc', label: 'False escalations', fn: function (r) { return r.error_type === 'false_escalation'; } },
+    { id: 'flip', label: 'Reviewer flipped', fn: function (r) { return r.reviewer_flipped; } },
+    { id: 'fullclar', label: 'Asked despite full coverage', fn: function (r) { return r.final_decision === 'CLARIFY' && r.kb_coverage === 'full'; } },
+    { id: 'inj', label: 'Injection', fn: function (r) { return r.category === 'injection'; } },
+    { id: 'amb', label: 'Ambiguous', fn: function (r) { return r.category === 'ambiguous'; } },
+    { id: 'near', label: 'Near miss', fn: function (r) { return r.category === 'near_miss'; } },
+    { id: 'ook', label: 'Out of KB', fn: function (r) { return r.category === 'out_of_kb'; } },
+    { id: 'gold', label: 'Golden', fn: function (r) { return r.dataset === 'golden'; } }
+  ];
+  var active = 'all';
+  document.getElementById('filters').innerHTML =
+    '<span class="flabel">Show</span>' + FILTERS.map(function (f) {
+      return '<button class="chip" type="button" data-f="' + f.id + '" aria-pressed="' +
+        (f.id === active) + '">' + esc(f.label) +
+        '<span class="ct">' + count(f.fn) + '</span></button>';
+    }).join('');
+
+  function render() {
+    var f = FILTERS.filter(function (x) { return x.id === active; })[0];
+    var shown = rows.filter(f.fn);
+    document.getElementById('count').innerHTML =
+      '<b>' + shown.length + '</b> of ' + rows.length + ' decisions' +
+      (active === 'all' ? '' : ' · ' + esc(f.label).toLowerCase());
+    document.getElementById('list').innerHTML = shown.length
+      ? shown.map(card).join('')
+      : '<p class="empty">No decisions match.</p>';
+  }
+
+  function card(r) {
+    var wrong = !r.correct;
+    var tags = '<span class="pill ' + r.final_decision + '">' + r.final_decision + '</span>';
+    if (wrong) tags += '<span class="pill miss">want ' + r.expected + '</span>';
+    if (r.reviewer_flipped) tags += '<span class="pill flip">flipped</span>';
+
+    var facts = [
+      ['coverage', r.kb_coverage],
+      ['set', r.dataset + (r.category ? ' · ' + r.category : '')],
+      ['gate said', r.gate_decision],
+      r.requires_human_authority ? ['needs human', 'true'] : null,
+      r.injection_detected ? ['injection detected', 'true'] : null,
+      r.policy_override ? ['policy', r.policy_override] : null,
+      r.v4_decision && r.v4_decision !== r.gate_decision ? ['v4 prompt said', r.v4_decision] : null
+    ].filter(Boolean).map(function (p) {
+      return '<span class="fact">' + esc(p[0]) + ' <b>' + esc(p[1]) + '</b></span>';
+    }).join('');
+
+    var parts = [
+      '<div class="block"><h4>Ticket</h4><div class="quote">' + esc(r.ticket) + '</div></div>',
+      '<div class="facts">' + facts + '</div>'
+    ];
+    if (r.missing_information)
+      parts.push('<div class="block"><h4>Detail it asked for</h4><p class="prose">' + esc(r.missing_information) + '</p></div>');
+    if (r.reasoning)
+      parts.push('<div class="block"><h4>Model reasoning</h4><p class="prose">' + esc(r.reasoning) + '</p></div>');
+    if (r.answer)
+      parts.push('<div class="block"><h4>What it replied</h4><p class="prose">' + esc(r.answer) + '</p></div>');
+    if (r.retrieved && r.retrieved.length)
+      parts.push('<div class="block"><h4>Retrieved</h4><div class="srcs">' +
+        r.retrieved.map(function (t) { return '<span class="src">' + esc(t) + '</span>'; }).join('') + '</div></div>');
+
+    return '<details class="row" data-ok="' + r.correct + '" data-err="' + esc(r.error_type || '') + '">' +
+      '<summary><span class="id">' + esc(r.id) + '</span>' +
+      '<span class="tkt">' + esc(r.ticket) + '</span>' +
+      '<span class="tags">' + tags + '<span class="arrow">▾</span></span></summary>' +
+      '<div class="body">' + parts.join('') + '</div></details>';
+  }
+
+  document.getElementById('filters').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-f]');
+    if (!b) return;
+    active = b.getAttribute('data-f');
+    Array.prototype.forEach.call(this.querySelectorAll('.chip'), function (c) {
+      c.setAttribute('aria-pressed', String(c.getAttribute('data-f') === active));
+    });
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

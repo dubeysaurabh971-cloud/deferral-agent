@@ -67,10 +67,31 @@ class GatedResolver:
     a separate code path reports RESOLVE. That split is exactly what the baseline got wrong.
     """
 
-    def __init__(self, escalate_on_partial: bool = True, review_clarifications: bool = True):
+    def __init__(
+        self,
+        escalate_on_partial: bool = True,
+        review_clarifications: bool | None = None,
+        cost_ratio: float | None = None,
+    ):
+        """cost_ratio is C = cost(false resolution) / cost(unnecessary handoff).
+
+        Whether to run the clarification reviewer is an operator's economics question, not a
+        property of the model: it trades one extra false resolution for seven fewer false
+        escalations, which is a win below C = 7 and a loss above it. Supply cost_ratio and the
+        right configuration is selected; supply review_clarifications to force it either way.
+
+        The default with neither supplied is reviewer-on, which assumes C < 7. An organisation
+        that treats a confidently wrong answer as ten times worse than a needless handoff should
+        pass cost_ratio=10 (or review_clarifications=False) and run the gate alone.
+        """
         self.retriever = HybridRetriever()
         self.escalate_on_partial = escalate_on_partial
+        if review_clarifications is None:
+            review_clarifications = (
+                review.review_is_worthwhile(cost_ratio) if cost_ratio is not None else True
+            )
         self.review_clarifications = review_clarifications
+        self.cost_ratio = cost_ratio
 
     def _review_clarify(self, ticket_text, chunks, attempt, decision):
         """Second-stage review of a CLARIFY. Returns (decision, answer, review_note, usage).
