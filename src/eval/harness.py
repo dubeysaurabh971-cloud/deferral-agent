@@ -175,6 +175,22 @@ def run_full_report(
     # that lost items can never be mistaken for a clean one.
     failures = []
 
+    # Token accounting for the whole run. On a metered key this is the difference between
+    # "the eval cost something" and a number you can multiply by a rate, so it is totalled
+    # across both the resolver and the judge rather than reported per-item.
+    spend = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
+
+    def account(usage) -> None:
+        if usage is None:
+            return
+        if isinstance(usage, dict):
+            spend["input_tokens"] += usage.get("input_tokens") or 0
+            spend["output_tokens"] += usage.get("output_tokens") or 0
+        else:
+            spend["input_tokens"] += usage.input_tokens or 0
+            spend["output_tokens"] += usage.output_tokens or 0
+        spend["calls"] += 1
+
     all_golden = load_golden()
     # Golden items are all expected_decision=RESOLVE, so there is no category to stratify on;
     # a seeded shuffle is the honest way to pick a subset.
@@ -188,10 +204,15 @@ def run_full_report(
     for i, item in enumerate(golden):
         try:
             run = resolver.resolve(item["question"])
-            groundedness = score_groundedness(run["answer"], run["retrieved_chunks"]) if judge else None
-            correctness = (
-                score_correctness(item["question"], run["answer"], item["reference_answer"]) if judge else None
-            )
+            account(run.get("usage"))
+            groundedness = correctness = None
+            if judge:
+                groundedness, g_usage = score_groundedness(run["answer"], run["retrieved_chunks"])
+                account(g_usage)
+                correctness, c_usage = score_correctness(
+                    item["question"], run["answer"], item["reference_answer"]
+                )
+                account(c_usage)
         except Exception as e:
             failures.append({"set": "golden", "item_id": item["item_id"], "error": f"{type(e).__name__}: {e}"})
             print(f"  [{i + 1}/{len(golden)}] {item['item_id']} FAILED: {type(e).__name__}")
@@ -216,7 +237,11 @@ def run_full_report(
     for i, item in enumerate(adversarial):
         try:
             run = resolver.resolve(item["ticket_text"])
-            groundedness = score_groundedness(run["answer"], run["retrieved_chunks"]) if judge else None
+            account(run.get("usage"))
+            groundedness = None
+            if judge:
+                groundedness, g_usage = score_groundedness(run["answer"], run["retrieved_chunks"])
+                account(g_usage)
         except Exception as e:
             failures.append({"set": "adversarial", "item_id": item["item_id"], "error": f"{type(e).__name__}: {e}"})
             print(f"  [{i + 1}/{len(adversarial)}] {item['item_id']} FAILED: {type(e).__name__}")
@@ -264,6 +289,10 @@ def run_full_report(
         "n_adversarial_available": len(all_adversarial),
         "n_failed": len(failures),
         "failures": failures,
+        "token_spend": {
+            **spend,
+            "total_tokens": spend["input_tokens"] + spend["output_tokens"],
+        },
         "golden_decision_accuracy": accuracy(golden_results),
         "golden_groundedness_rate": golden_groundedness,
         "golden_hallucination_rate": complement(golden_groundedness),

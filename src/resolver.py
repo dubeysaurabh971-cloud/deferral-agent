@@ -79,7 +79,7 @@ class GatedResolver:
             + "\n\n".join(f"[{i + 1}] ({c['title']})\n{c['text']}" for i, c in enumerate(chunks))
             + f"\n\nCustomer ticket:\n{ticket_text}"
         )
-        attempt = llm_client.chat_structured(prompt, gate.ResolutionAttempt, max_tokens=1536)
+        attempt, usage = llm_client.chat_structured(prompt, gate.ResolutionAttempt, max_tokens=4096)
         decision, override_reason = gate.apply_policy(attempt, self.escalate_on_partial)
 
         record = {
@@ -99,9 +99,10 @@ class GatedResolver:
             "answer": attempt.answer,
             "model": config.active_model(),
             "resolver": "gated",
-            # This call returns a parsed object rather than a usage object; token accounting
-            # for the structured path is not wired up yet.
-            "usage": {"input_tokens": None, "output_tokens": None},
+            "usage": {
+                "input_tokens": usage.input_tokens,
+                "output_tokens": usage.output_tokens,
+            },
         }
         trace.log_trace(record)
         return {**record, "retrieved_chunks": chunks}

@@ -19,7 +19,7 @@ class CorrectnessVerdict(BaseModel):
     score: int = Field(description="1-5 rubric: 1=wrong/irrelevant, 3=partially correct, 5=fully correct and complete.")
 
 
-def score_groundedness(answer: str, chunks: list[dict]) -> GroundednessVerdict:
+def score_groundedness(answer: str, chunks: list[dict]) -> tuple[GroundednessVerdict, llm_client.LLMUsage]:
     excerpts = "\n\n".join(f"[{i + 1}] {c['title']}\n{c['text']}" for i, c in enumerate(chunks))
     prompt = (
         f"Retrieved excerpts:\n\n{excerpts}\n\n"
@@ -31,7 +31,7 @@ def score_groundedness(answer: str, chunks: list[dict]) -> GroundednessVerdict:
     return llm_client.chat_structured(prompt, GroundednessVerdict, model=config.judge_model())
 
 
-def score_correctness(question: str, answer: str, reference_answer: str) -> CorrectnessVerdict:
+def score_correctness(question: str, answer: str, reference_answer: str) -> tuple[CorrectnessVerdict, llm_client.LLMUsage]:
     prompt = (
         f"Question:\n{question}\n\n"
         f"Reference answer:\n{reference_answer}\n\n"
