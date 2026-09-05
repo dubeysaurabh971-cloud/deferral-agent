@@ -7,7 +7,7 @@ GatedResolver  — Week 3. One structured call yields both the answer and an ass
                  coverage, missing detail, and whether a human must act; src/gate.py maps
                  that to the decision. Same number of LLM calls as the baseline.
 """
-from src import config, gate, llm_client, trace
+from src import config, gate, llm_client, review, trace
 from src.retrieval import HybridRetriever
 
 SYSTEM_PROMPT = """You are a support agent for Wix, a website-building platform.
@@ -67,9 +67,38 @@ class GatedResolver:
     a separate code path reports RESOLVE. That split is exactly what the baseline got wrong.
     """
 
-    def __init__(self, escalate_on_partial: bool = True):
+    def __init__(self, escalate_on_partial: bool = True, review_clarifications: bool = True):
         self.retriever = HybridRetriever()
         self.escalate_on_partial = escalate_on_partial
+        self.review_clarifications = review_clarifications
+
+    def _review_clarify(self, ticket_text, chunks, attempt, decision):
+        """Second-stage review of a CLARIFY. Returns (decision, answer, review_note, usage).
+
+        The reviewer may only turn CLARIFY into RESOLVE, and only where the gate's own policy
+        would have permitted a RESOLVE in the first place -- so the flip is put back through
+        apply_policy rather than trusted on its own. Without that, the reviewer becomes a way
+        to launder a resolution past invariants the system already declared, which measured as
+        5 extra false resolutions against 1 with the check in place.
+
+        Injection is the one extra guard: a ticket carrying an active manipulation attempt is
+        the last place to relax caution, whatever the reviewer concludes.
+        """
+        if attempt.injection_attempt_detected:
+            return decision, attempt.answer, "review skipped: injection attempt detected", None
+
+        verdict, usage = review.review_clarification(ticket_text, chunks, attempt.answer)
+        proposed, answer_override = review.apply_review(verdict)
+        if proposed != "RESOLVE":
+            return decision, attempt.answer, "review: question stands", usage
+
+        # Would the policy layer have allowed this resolution? If not, the deferral stands.
+        probe = attempt.model_copy(update={"decision": "RESOLVE"})
+        permitted, blocked_reason = gate.apply_policy(probe, self.escalate_on_partial)
+        if permitted != "RESOLVE":
+            return decision, attempt.answer, f"review overruled by policy: {blocked_reason}", usage
+
+        return "RESOLVE", answer_override, "review: clarification was unnecessary", usage
 
     def resolve(self, ticket_text: str) -> dict:
         chunks = self.retriever.retrieve(ticket_text)
@@ -81,6 +110,17 @@ class GatedResolver:
         )
         attempt, usage = llm_client.chat_structured(prompt, gate.ResolutionAttempt, max_tokens=4096)
         decision, override_reason = gate.apply_policy(attempt, self.escalate_on_partial)
+
+        answer, review_note = attempt.answer, None
+        if decision == "CLARIFY" and self.review_clarifications:
+            decision, answer, review_note, review_usage = self._review_clarify(
+                ticket_text, chunks, attempt, decision
+            )
+            if review_usage is not None:
+                usage = llm_client.LLMUsage(
+                    usage.input_tokens + review_usage.input_tokens,
+                    usage.output_tokens + review_usage.output_tokens,
+                )
 
         record = {
             "ticket_text": ticket_text,
@@ -96,7 +136,9 @@ class GatedResolver:
             "requires_human_authority": attempt.requires_human_authority,
             "injection_attempt_detected": attempt.injection_attempt_detected,
             "reasoning": attempt.reasoning,
-            "answer": attempt.answer,
+            "answer": answer,
+            "model_answer": attempt.answer if answer is not attempt.answer else None,
+            "clarify_review": review_note,
             "model": config.active_model(),
             "resolver": "gated",
             "usage": {

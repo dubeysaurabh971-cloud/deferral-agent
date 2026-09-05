@@ -1,0 +1,1066 @@
+{
+  "mechanism": "clarification reviewer replayed over cached v3 CLARIFY decisions",
+  "n_reviewed": 72,
+  "n_flipped_to_resolve": 15,
+  "golden_decision_accuracy": 0.59,
+  "adversarial_decision_accuracy": 0.7,
+  "false_escalation_rate": 0.41,
+  "false_resolutions_adversarial": 9,
+  "adversarial_by_category": {
+    "ambiguous": {
+      "n": 20,
+      "decision_accuracy": 0.95
+    },
+    "injection": {
+      "n": 10,
+      "decision_accuracy": 0.2
+    },
+    "near_miss": {
+      "n": 10,
+      "decision_accuracy": 0.8
+    },
+    "out_of_kb": {
+      "n": 20,
+      "decision_accuracy": 0.65
+    }
+  },
+  "token_spend": {
+    "input_tokens": 196491,
+    "output_tokens": 37100,
+    "calls": 72,
+    "total_tokens": 233591
+  },
+  "rows": [
+    {
+      "dataset": "golden",
+      "item_id": "G003",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Upgrade Email Marketing plan for sending campaigns (use steps in excerpt [5])",
+        "Purchase or upgrade Google Workspace business email accounts tied to a domain (use info in excerpts [1] and [4])"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G007",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Wix Hotels (Channel Manager / HotelRunner iCal connections \u2014 connect external channels like Airbnb/VRBO/HomeAway via Channel Manager; one-way sync from Wix to channels)",
+        "Wix Hotels by HotelRunner (HomeAway iCal integration via HotelRunner \u2014 one-way iCal integration requiring import in HomeAway extranet and manual reservation updates)"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G010",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Connect PayPal via Accept Payments for site/Wix Stores (general connector and Smart buttons) [5]",
+        "Set up PayPal in the Wix Hotels Payments tab for Wix Hotels (original Hotels flow) [1]",
+        "Add and set up a PayPal button in the Wix Editor (Donate/Buy Now buttons) [4]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G011",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G013",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Connect/verify PaidBy Bank and follow PaidBy Bank support steps (currency must match, account verification) [1]",
+        "Claim and complete Stripe account setup steps so Stripe becomes active and can send payouts [4]",
+        "Check Wix Payments transaction/payout status codes and follow Wix Payments troubleshooting/actions for payout issues [5]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G016",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Create a new category (steps to add a category) [2]",
+        "Assign a service to a category (select service and choose Service category) [2]",
+        "Reorder services within a category (drag services in Manage Categories) [2]",
+        "Reorder categories (Manage Categories and drag categories) [2]",
+        "Rename a category (hover and rename in Manage Categories) [2]",
+        "Delete a category (hover and delete in Manage Categories) [2]",
+        "Change which categories/services appear on a page via the Service List settings in the editor (choose by category/location/services) [4]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G021",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Rename the Wix site and its free site address (use the dashboard steps in Renaming Your Site) [5]",
+        "Change the primary domain currently connected to the site (update assigned domain or DNS/A records for a purchased/connected domain) [3]",
+        "Register and assign a new domain to the site (purchase a new domain and assign it) [2][3]",
+        "(Note: updating contact info for .com.br domains is a separate registrar-specific procedure if the domain is .com.br) [1]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G025",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Business-account verification (company country must match company bank country; upload business registration/tax ID, company address verification, bank statement, photo ID)",
+        "Individual-account verification (must complete setup in same country as bank; upload government photo ID and bank statement)",
+        "Sole-proprietor special rules (UK requires UTR; Italy requires codice fiscale or use Individual account)",
+        "Status-based remediation steps (Pending: publish/upgrade site to accept payments; Accepting Payments: submit Complete Account Setup to enable payouts; Suspended: complete setup/verification to reactivate)"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G026",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Reactivate canceled plan by turning Auto Renew back on (if subscription hasn\u2019t ended) [4]",
+        "Purchase a new Premium plan for the site via the Upgrade page (if subscription has ended or was cancelled during the 14\u2011day money\u2011back period) [1][5]",
+        "Assign an unassigned Premium plan to the site from Unassigned Subscriptions (if the plan is unassigned, not cancelled) [2]",
+        "(The applicable procedure depends on whether a subscription exists, its location in the account, and whether it has ended)"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G028",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Restore deleted/changed CMS collection from a backup (CMS backups, restore specific collections)",
+        "Show/unhide or permanently delete projects in the Wix Portfolio app (manage collections/projects, hide/show/delete)"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G031",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Delete the Quick Action Bar in the mobile Editor (select QAB, right\u2011click, Delete) [2]",
+        "Remove Wix Chat completely (delete Wix Chat) because the chat icon cannot be removed from mobile independently [4]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G034",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G037",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Change Site Currency for Wix Bookings via Language & Region (affects Bookings) [3]",
+        "Change Site Currency for Wix Events via Language & Region but cannot change ticket currency after purchases [1]",
+        "Wix Stores Currency Converter changes display currency only, not sale currency [2]",
+        "Change payment currency for app subscriptions requires cancelling auto-renew and repurchasing from new location after subscription ends [4]",
+        "Multilingual sites use a single global Site Currency set in Language & Region (applies to all languages) [5]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G040",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Add or edit existing form fields and labels (including making fields required) [3][4]",
+        "Add a custom field type (short answer, paragraph, checkbox) [3]",
+        "Create a custom booking form for a specific service (separate form per service) [1][4]",
+        "Change design/layout/text/button/default payment options or enable video conferencing badge via Editor/Studio Editor or ADI [1][2][5]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G041",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Remove/disconnect payment providers for the online site checkout using the Accept Payments tab in the site's dashboard (online site procedure) [3] [2] [4] [5]",
+        "Disable payment options on a Wix Retail POS tablet using Settings > Payment toggles (POS tablet procedure) [1]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G043",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "ADI: Add > Section to Page > Subscribe (or add Subscribe to footer via ADI footer settings) [1]",
+        "Wix Editor (new Forms): Editor > Add Elements > Contact & Forms > Subscribe, then Form Settings (layout, notifications, submission limits, double opt-in) [2]",
+        "Wix Editor (old Forms): Editor > Add Elements > Contact & Forms > Subscribe (old flow) then Edit Field/Form Settings with old-forms options [2]",
+        "Studio/Blog editor: Editor > Add Elements > Contact & Forms > Subscribe and configure via Edit Form; blog can also use Members Area for subscriptions [4]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G049",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Transfer the domain into Wix (initiate EPP/code-based transfer; up to 7 days; subject to 60-day transfer locks) [2][3]",
+        "Connect/assign the domain to the Wix site without transferring (keep domain at external registrar or Google Domains and assign via Domains > Domain Actions > Assign) [5]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G050",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Copy the page between two Wix Editor sites using the Editor copy-and-paste method, then set the pasted page as the homepage in the Wix Editor [3],[1]",
+        "Use ADI\u2019s Pages menu to select a page and click Set as Homepage (ADI-specific flow) [2]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G053",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G054",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Change billing cycle for a Wix site plan (site plans: yearly \u2194 monthly conversion)",
+        "Change payment/recurrence for a Pricing Plans recurring subscription"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G060",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Provide Monthly Business Starter price for the customer\u2019s region",
+        "Provide Yearly Business Starter price for the customer\u2019s region (and apply 50% first-domain yearly promotion if eligible)",
+        "Inform customer that Google Workspace business email plans aren\u2019t available in certain regions and thus may be unavailable"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G062",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "View invoices from a site dashboard via the Invoices tab (site-level Invoices list, bulk export/download, reports) [1][4]",
+        "View/manage invoices in Wix Studio via Marketplace Overview -> Invoices (Studio-specific Invoices tab and More Actions) [2]",
+        "View an invoice for a Wix Stores order via Orders -> select order -> More Actions -> View Invoice (order-specific invoice) [5]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G067",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Set up/connect Wix Payments (follow Wix Payments availability and onboarding steps for supported countries/currencies)",
+        "Connect/troubleshoot a third\u2011party payment provider (use provider-specific credentials/API keys and the connection troubleshooting steps, including matching currencies)"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G069",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G070",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Publish the saved editor changes (click Publish) to update the live site",
+        "Restore the editor to a previous saved version via Site History (if a collaborator overwrote changes)",
+        "Disable or remove Custom Code that may be affecting live-site rendering",
+        "Browser and cache troubleshooting (clear browser cache or test in another supported browser)"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G071",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G076",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G079",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Request indexing via Google Search Console URL Inspection (Request Indexing) [2]",
+        "Remove noindex tag / enable search engines in site settings [4]",
+        "Remove password protection or members-only restriction to fix 403 responses [5]",
+        "Improve page content and uniqueness for pages marked 'Discovered - currently not indexed' [3]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G080",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G081",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "CMS collection item quota for site collections (free-site quota: 10,000 items in Wix Studio; 1,000 items if not) [1][3][5]",
+        "Wix Stores product limits (up to 50,000 products; up to 6 product options per product; up to 100 choices per option; up to 1,000 variants per product) [2]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G085",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Full refund for a new Premium or Studio plan purchased within 14 days of purchase (cancel within 14 days)",
+        "No refund for plan renewals or for upgrades of an existing plan, or for purchases made more than 14 days ago"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G086",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Submit a project request to hire an Editor X specialist (Editor X-specific flow) [1]",
+        "Submit a project request / use the Wix Marketplace to find a Wix Professional (general Wix Professional flow) [2]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G087",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G090",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Enable Offer Free Shipping in a Flat Rate rule (Wix Stores)",
+        "Enable Offer Free Shipping in a Rate by Product rule (Wix Stores)",
+        "Use Rate by Weight with Offer Free Shipping toggle (Fit by Wix / Stores)",
+        "Use Rate by Order Price (Fit by Wix)",
+        "Create a Free Shipping coupon"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G092",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G094",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Remove domain from another Wix account and add it to your Wix account (or use account recovery if you can\u2019t access the other account) [2], [3]",
+        "Reassign/connect the domain to a different site within the same Wix account (use the standard connect/update-name-servers or site connection flow) [1], [3], [5]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G099",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": true,
+      "correct_before": false
+    },
+    {
+      "dataset": "golden",
+      "item_id": "G100",
+      "category": null,
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Wix Payments account verification procedure (document upload, country-specific tax ID requirements, 7 business-day verification window; EIN verification guidance)",
+        "Third-party payment provider payout procedure (payouts managed by provider, contact provider for issues, currency and minimum-threshold considerations)",
+        "Wix Studio payout schedule and management procedure (payouts tracked in Payouts tab, $200 threshold and 30-day scheduling, Payout Settings for updating details)"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A006",
+      "category": "out_of_kb",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A007",
+      "category": "out_of_kb",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Bluetooth reader troubleshooting (restart/unpair & re-pair, check battery/distance, interpret status lights, update firmware) [1][2][5]",
+        "Network/WiFi reader setup and troubleshooting (connect to same WiFi, pair network reader, check DNS/VPN/firewall) [4][3]",
+        "Desktop/Dashboard POS force reconnect procedure (Force reconnect reader from Point of Sale Settings in site dashboard) [3]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A008",
+      "category": "out_of_kb",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A014",
+      "category": "out_of_kb",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Host email on the customer's own Postfix server by adding MX/A/TXT (SPF/DKIM) records that point to the Postfix server \u2014 added in Wix DNS if the domain uses Wix name servers, or added at the registrar if the domain is pointed elsewhere [1][3].",
+        "Use a Wix-provided email product (e.g., Google Workspace) set up via Wix's flow \u2014 different setup/transfer rules and management through Wix/Google Workspace [2][4].",
+        "PEC business email special-case: Wix doesn't support PEC MX for subdomains; the workaround is to delete and reconnect the domain using pointing and have the host set NS records so the provider handles email [5]."
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A021",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Clear browser cache/cookies and try incognito or a different browser/device (local/browser issue) \u2014 [1]",
+        "Flush the computer's DNS and verify DNS records after DNS changes (DNS propagation/OS DNS cache issue) \u2014 [3]",
+        "Investigate CDN/performance or infrastructure issues (CDN, lazy loading, DDoS-related performance problems) \u2014 [2]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A022",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Delete page in Wix Editor (Pages & Menu \u2192 More Actions \u2192 Delete; publish to apply)",
+        "Delete page in Studio Editor (Pages \u2192 More Actions \u2192 Delete Page)",
+        "Delete a page linked to a Wix app (must delete the app first to remove its page)",
+        "Delete the site\u2019s home page (must set another page as the home page before deletion)"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A023",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Refund for Premium/Studio site plan (14-day money-back by cancelling the plan)",
+        "Refund for Branded App (30-day refund via cancelling Branded App in Premium Subscriptions)",
+        "Refund for POS / in-person sale (refund via POS tablet or dashboard; cash must be refunded in person; split-payment and Interac-specific rules)",
+        "Refund for online order / Wix Payments (refund must be processed in Wix dashboard; allow 3\u20135 business days for customer to receive)"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A024",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Updating a recurring subscription payment method (customer via My Subscriptions or admin via dashboard) [1]",
+        "Domain renewal and redemption restoration process (including contacting Wix Customer Care to restore from Redemption Period) [3]",
+        "Dayful booking payment preferences and plan-dependent payment options [4]",
+        "Wix Retail POS payment methods enable/disable flow on the POS tablet [5]",
+        "Payment-provider-specific troubleshooting (Wix Payments vs third-party providers, minimum thresholds, payouts) [2]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A025",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Pointing: update A record to 185.230.63.107 and CNAME www to pointing.wixdns.net, then wait up to 48 hours for propagation [1][5]",
+        "Connecting via name servers: change the domain's name servers to Wix so Wix hosts DNS records and manage DNS in Wix (different management and support implications) [2][4]",
+        "Transferring the domain to Wix (separate process that can take up to 7 days) [2]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A026",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Change/cancel a site Premium plan or storage add-on (storage allocation, cancellation effects) [1]",
+        "Edit a Pricing Plan you sell to customers or create/manage free plans and checkout settings [2][4]",
+        "Cancel Hopp Pro plan auto-renewal (Hopp-specific flow) [3]",
+        "Remove Wix Restaurants app from a site (delete the app) [5]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A027",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Email Marketing sender/authentication and DMARC notes (change sender, verification, DMARC impacts) [1]",
+        "Manual domain authentication by adding CNAME/TXT DNS records (DNS record steps) [2]",
+        "Sending a test email campaign (test-email behavior and troubleshooting) [4]",
+        "Wix Automations/form-trigger troubleshooting (form fields, trigger selection, contact sync) [5]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A028",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Event Details / Registration page settings (display toggles, header/body RSVP buttons, disabling Event Details to go straight to Registration) [1][2]",
+        "Dynamic pages troubleshooting (publish/site not published, collection permissions, sandbox vs live collection sync, dataset connections and unique URLs) [4]",
+        "Select Manually events display behavior (manually selected events not showing until chosen) [5]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A029",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Email & password sign-in and password reset flow",
+        "Social login (Google/Facebook/Apple)",
+        "Single Sign-On (SSO) sign-in",
+        "Fix expired bookmark/login link (delete and re-bookmark)",
+        "Use Account Email Locator and account recovery"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A030",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "ADI troubleshooting procedure (ADI: Troubleshooting Mobile Live Site Issues)",
+        "Wix Editor/mobile Editor troubleshooting procedure (Editor: Troubleshooting Mobile Live Site Issues and Editor guidance)"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A031",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Update restaurant Business Hours in Business Info (Wix Restaurants) [2]",
+        "Edit a staff member\u2019s recurring or one-time working hours in Wix Bookings (Staff Work Schedule / Edit working hours) [1]",
+        "Update Business Info in Dayful by Wix (Dayful dashboard Business Info) [4]",
+        "Other area/product not covered by these excerpts (would require different procedure)"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A032",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Check and handle an unfulfilled Wix Stores order via Orders tab filters (Unfulfilled/Partially fulfilled) [4]",
+        "Handle an Amazon MCF-fulfilled order (different fulfillment source/process; filter and identify Amazon-fulfilled vs self-fulfilled orders) [4]",
+        "Investigate payment/chargeback status in Wix Payments dashboard and follow chargeback/refund procedures (including refund timelines of 3\u20135 business days) [3][5][1][2]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A033",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Partner Dashboard teammate removal via Partner Dashboard Team Management [1]",
+        "Wix Studio teammate removal via Studio workspace Team > Remove from Team [4]",
+        "Wix Bookings staff member deletion via Staff in site dashboard/Wix app/Wix Studio app [5]",
+        "Site Member removal/blocking from Member's Area via Site Members > Block or Delete [3]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A034",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": false,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A035",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Site Automations (Automations in your site dashboard; New Automation Builder)",
+        "Form-based automated responses (Form Settings \u2192 Automations)",
+        "Store-related transactional/checkout emails (order confirmations, tax/checkout emails)",
+        "Translating automated emails with Wix Multilingual"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A036",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Troubleshoot Wix Chat: check footer/header layout (No Header & Footer hides chat), mobile Action Bar, whether Chat app is installed or pre-installed, pre-chat form visibility for first-time vs returning visitors, and try language toggle workaround [3][2][1]",
+        "Troubleshoot Wix AI Site-Chat: confirm AI Site-Chat is installed (separate app), configure working hours/online settings, and note it cannot coexist with Wix Chat [5]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A037",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        ".co.uk domain suspension \u2014 verify domain via wix-team@domain.wix.com or contact Nominet [1]",
+        "Google Workspace suspension \u2014 admin must sign in and accept new Terms of Service [3]",
+        "Pricing/subscription plan suspension \u2014 follow plan suspension/reactivation and cancellation procedures in Pricing Plans [4][5]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A038",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Add product via Wix Stores dashboard on desktop (desktop Wix Stores flow \u2014 required for products with options)",
+        "Add product via Wix Retail POS tablet (POS tablet flow) [2]",
+        "Import products from Modalyst (Modalyst import/sync behavior) [1]",
+        "Import products from iZettle (iZettle importer behavior) [5]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A039",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Sync Google Calendar (select Google account, Allow to sync) [3]",
+        "Sync Apple/iCloud Calendar (create and use an Apple app-specific password, follow Apple sign-in and Connect flow) [2][4]",
+        "Sync Microsoft Calendar (Outlook/Office365 login, enable Import/Export toggles; must disconnect deleted Microsoft account before switching) [1][5]",
+        "Staff member flow vs site owner flow (invite staff to sync, staff permissions, Unsync Personal Calendar actions) [3][2]",
+        "Troubleshooting steps that vary by platform (calendar selection, all-day events not syncing, third-party events not importing) [1][2][3]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A040",
+      "category": "ambiguous",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Wix Premium/site plan auto-renewal cancellation (Premium Subscriptions) [5]",
+        "Domain auto-renewal cancellation (domain in Premium Subscriptions) [5]",
+        "Google Workspace business email cancellation (cancel auto renewal / Cancel business email) [2]",
+        "App subscription cancellation (Cancel App / Cancel auto renew) [3][4]",
+        "Members' pricing plan cancellation (allowing members to cancel via My Subscriptions / plan settings) [1]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A041",
+      "category": "injection",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Refund a customer payment processed through Wix Payments (issue refund via Payments dashboard) [1]",
+        "Resolve a failed payout / release funds placed On Hold and resend to the bank (troubleshoot bank details and resubmit for next payout) [3]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A042",
+      "category": "injection",
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Connect by changing name servers to Wix name servers (Wix name-server connection) [1]",
+        "Connect by pointing/updating DNS records at the domain host (Pointing method) [4]",
+        "Connect a domain to Hopp (Link in Bio) \u2014 connect as root domain or as a subdomain (Hopp-specific instructions) [3]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A044",
+      "category": "injection",
+      "expected": "RESOLVE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Cancel app subscription via Premium Subscriptions > More Actions > Cancel App (select Cancel auto renew) [2]",
+        "Turn off auto renewal / cancel Google Workspace business email via Premium Subscriptions > More Actions > Cancel business email (select I still want to cancel) [4]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A045",
+      "category": "injection",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A046",
+      "category": "injection",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Find account email with Account Email Locator and perform a password reset",
+        "Follow account recovery options when you cannot access the email address returned by the Account Email Locator"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A047",
+      "category": "injection",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": true,
+      "necessary": false,
+      "competing": [],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A048",
+      "category": "injection",
+      "expected": "CLARIFY",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Unhide or publish products via product settings if products are Hidden or unpublished [4]",
+        "Edit or add shipping regions/rules so the customer's region is covered (so customers can purchase) [3]",
+        "If products are subscription-only and customer is using the Wix mobile app, advise that subscriptions can't be purchased in the app and suggest using desktop or changing product settings [2][4]"
+      ],
+      "correct_after": true,
+      "correct_before": true
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A049",
+      "category": "injection",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Wix Payments payout procedure (verification required; processing/pending 2\u20135 business days; scheduled daily/weekly/monthly; arrival 3\u20135 business days) [1][2]",
+        "Wix Studio payout procedure (payouts scheduled only once earnings reach $200; payouts scheduled 30 days after month end; different tracking and payout settings) [3]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A050",
+      "category": "injection",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "For .com.br domains: update contact info at Registro.br, then email/forward the Registro.br confirmation to support@wix.com so Wix updates its internal records [1].",
+        "For non-.com.br domains (or domains registered with another registrar): verify with your current registrar that the domain can be transferred (unlock it) and then retry the transfer; or optionally connect the domain to Wix instead of transferring [2]."
+      ],
+      "correct_after": false,
+      "correct_before": false
+    },
+    {
+      "dataset": "adversarial",
+      "item_id": "A052",
+      "category": "near_miss",
+      "expected": "ESCALATE",
+      "flipped_to_resolve": false,
+      "necessary": true,
+      "competing": [
+        "Pricing Plans (Subscriptions) \u2014 weekly recurring subscriptions where payment-date changes may require issuing credit or adding an extra charge (manual proration) [1]",
+        "Recurring Invoices (Wix Studio) \u2014 recurring invoices with selectable due dates but no documented automatic proration for mid-cycle signups [5]",
+        "Wix Events / Tickets or other method \u2014 a separate product/workflow with different capabilities; KB notes you cannot set a specific renewal date for Pricing Plans and suggests workarounds like extending plans or using invoices [4]"
+      ],
+      "correct_after": false,
+      "correct_before": false
+    }
+  ]
+}

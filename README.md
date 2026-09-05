@@ -9,9 +9,10 @@ measurement of what that costs.
 > handoff are not the same mistake.
 >
 > **What I would ship.** Not this build. My bar is false escalation **under ~15%** while holding
-> false resolutions in low single digits; this sits at 51%, so it deflects too little to be worth
-> deploying. The cause is diagnosed (finding 2) but **not cheaply fixable** — a targeted prompt
-> fix aimed at exactly it made things worse (finding 3), which is the most useful thing I learned.
+> false resolutions in low single digits; the best configuration here reaches 46%, so it still
+> deflects too little to deploy. Getting there took two attempts: a prompt fix aimed straight at
+> the problem made it *worse* (finding 3), and only a second-stage mechanism moved it (finding 4).
+> The gap between those two attempts is the most useful thing in this repo.
 >
 > The self-critique below is deliberate. Read it as scope of what was measured, not as a verdict
 > that the approach failed.
@@ -42,14 +43,18 @@ ticket resolved in the same breath.
 
 Both sets, same model (`gpt-5-mini`, `reasoning_effort=low`), one pass each.
 
-| metric | baseline | gated | |
-|---|---:|---:|---|
-| **False resolutions** (answered when it should have deferred) | **58** | **4** | ✅ −93% |
-| Adversarial decision accuracy (n=60) | 3.3% | **71.7%** | ✅ |
-| Golden decision accuracy (n=100) | 100% | **49%** | ❌ the price |
-| False escalation rate | 0% | **51%** | ❌ |
-| Deferral precision (both sets) | — | 50.5% | |
-| Raw decision accuracy, all 160 items | 63.7% | 57.5% | see below |
+| metric | baseline | gate | gate + reviewer |
+|---|---:|---:|---:|
+| **False resolutions** (answered when it should have deferred) | 58 | **4** | **5** |
+| Adversarial decision accuracy (n=60) | 3.3% | **71.7%** | 70.0% |
+| Golden decision accuracy (n=100) | 100% | 49% | **56%** |
+| False escalations | 0 | 53 | **46** |
+| Misrouted deferrals | 0 | 11 | 11 |
+
+The third column adds a second-stage **clarification reviewer** (finding 4): a separate call that
+looks only at CLARIFY decisions and asks whether the question was necessary. It buys 7 points of
+golden accuracy for 1 extra false resolution. It is on by default; `GatedResolver(
+review_clarifications=False)` turns it off.
 
 The baseline's 100% golden accuracy and 0% false-escalation rate are trivial, not virtuous: a
 resolver that never defers cannot defer wrongly. It is a floor, not a competitor.
@@ -59,14 +64,28 @@ and an unnecessary handoff as equally bad, which no support organisation would a
 authoritative answer reaches the customer and generates a second ticket, while a needless handoff
 costs a few minutes of staff time. Score the two error types separately and the picture inverts:
 
-| error type (160 items) | baseline | gated |
-|---|---:|---:|
-| False resolutions | 58 | **4** |
-| False escalations | 0 | 53 |
-| Misrouted deferrals (right to defer, wrong lane) | 0 | 11 |
+| error type (160 items) | baseline | gate | gate + reviewer |
+|---|---:|---:|---:|
+| False resolutions | 58 | 4 | 5 |
+| False escalations | 0 | 53 | 46 |
+| Misrouted deferrals (right to defer, wrong lane) | 0 | 11 | 11 |
 
 Letting a false resolution cost `C` times an unnecessary handoff, **the gate wins for any
 C > 1.19.** At C=5 the baseline's error cost is 290 against the gate's 84.
+
+The same arithmetic is what settles the reviewer's configuration, and it is worth seeing, because
+the ungoverned version looks better on accuracy and is worse where it counts:
+
+| total error cost | C=1 | C=2 | C=3 | C=5 | C=10 |
+|---|---:|---:|---:|---:|---:|
+| gate alone | 68 | 72 | 76 | 84 | **104** |
+| + reviewer, ungoverned | **59** | 68 | 77 | 95 | 140 |
+| + reviewer, governed | 62 | **67** | **72** | **82** | 107 |
+
+The ungoverned reviewer flips more clarifications and wins on raw accuracy, and it is the wrong
+choice for any C above 2 — it buys golden accuracy with exactly the error this system exists to
+prevent. The governed one is better everywhere up to C≈7. Picking it on accuracy alone would have
+picked wrong.
 
 Be precise about which half of that is evidence. The **1.19 is computed** — it falls directly out
 of the measured error counts in the table above, and it is not a guess. **`C` itself is not
@@ -91,10 +110,10 @@ By adversarial category:
 On error cost, yes, and not narrowly — see the break-even above. The gate eliminates 54 of the
 baseline's 58 false resolutions, which is the failure this system exists to prevent.
 
-On automation rate, no. At 51% false escalation half the answerable tickets still reach a human
-and you are paying LLM inference for the privilege. The gate has learned it is allowed to decline
-and has not learned when to stop. Both things are true, and shipping this would mean accepting a
-deflection rate of roughly 49% in exchange for near-elimination of confidently wrong answers.
+On automation rate, no. Even with the reviewer, 46% of answerable tickets still reach a human and
+you are paying LLM inference for the privilege. The gate has learned it is allowed to decline and
+has only partly learned when to stop. Both things are true, and shipping this would mean accepting
+a deflection rate of roughly 56% in exchange for near-elimination of confidently wrong answers.
 
 Note also what a single aggregate can hide in the other direction. Quoted alone, deferral
 precision on the adversarial set is **96.4%** — when it defers there, it is nearly always right.
@@ -105,7 +124,8 @@ not the whole picture.
 ## How it works
 
 ```
-ticket → hybrid retrieval (BM25 + dense, RRF) → one structured LLM call → policy → decision
+ticket → hybrid retrieval (BM25 + dense, RRF) → structured LLM call → policy ─┬→ RESOLVE / ESCALATE
+                                                                             └→ CLARIFY → reviewer → RESOLVE?
 ```
 
 **Retrieval** (`src/retrieval.py`) is hybrid: BM25 keyword search and dense embeddings fused with
@@ -128,6 +148,20 @@ Three ordered steps, and **the order is load-bearing**:
 Every rule is one-directional — each can only downgrade `RESOLVE` to a deferral, never upgrade a
 deferral. That makes the gate safe to bolt on: it cannot introduce a false resolution the ungated
 baseline would not already have made.
+
+**The clarification reviewer** (`src/review.py`) is a second call that sees only CLARIFY
+decisions, and is asked one question: was that clarification necessary? It is the mirror of the
+policy layer — one-directional in the opposite direction, able only to turn CLARIFY into RESOLVE,
+never to create a deferral. Two guards keep it honest, both of them measured rather than assumed:
+
+- Any flip is put back through `apply_policy`. The reviewer cannot launder a resolution past an
+  invariant the system already declared — without this it produced 5 extra false resolutions
+  instead of 1.
+- Tickets carrying a detected injection attempt are never reviewed. A ticket containing an active
+  manipulation attempt is the last place to relax caution.
+
+It also refuses to flip without producing a replacement answer, since a RESOLVE whose text is
+still a clarifying question would be worse than the deferral it replaced.
 
 ## Evaluation
 
@@ -166,7 +200,7 @@ silent; TEST A is still too permissive when the KB is not. On paper this is the
 highest-value fix remaining, worth roughly 22 points of false escalation — which is exactly what
 finding 3 set out to collect, and did not.
 
-**3. The obvious fix for finding 2 made it worse. This is the most useful result here.** TEST A
+**3. The obvious fix for finding 2 made it worse.** TEST A
 let the model invent a plausible follow-up question rather than find a necessary one, so the
 revision required it to *name the fork*: state two specific competing answers the excerpts
 actually support, plus the detail selecting between them. If it could not name two, the ticket
@@ -198,7 +232,32 @@ RESOLVE decisions, a calibrated threshold on something external to the model, or
 that only reviews clarification decisions. That is a design change, not a wording change, and it
 is where I would start next.
 
-**4. The policy layer is very nearly inert.** `n_policy_overrides` is **1 across 160 items** — a
+**4. What did work: taking the judgement out of the prompt and giving it its own call.**
+Finding 3 ruled out the wording fix, so the next attempt was structural. `src/review.py` adds a
+second call that sees only CLARIFY decisions and is asked exactly one question — was this
+clarification necessary? No coverage label, no escalation, no injection handling, nothing to
+trade against.
+
+| | gate alone | + reviewer |
+|---|---:|---:|
+| Golden decision accuracy | 49% | **56%** |
+| False escalations | 53 | **46** |
+| False resolutions | 4 | 5 |
+| Adversarial accuracy | 71.7% | 70.0% |
+
+Seven points of golden accuracy for one extra false resolution, where the prompt-level attempt at
+the same goal lost seven. The difference is isolation: the same judgement the model got wrong as
+one paragraph inside a 2,000-token prompt, it got substantially right as a 400-token prompt with
+a single question in it. If a model is ignoring an instruction that competes with five others,
+the fix may be to stop making it compete rather than to word it more forcefully.
+
+**The governance mattered more than the mechanism.** Ungoverned, the reviewer flipped 15
+clarifications and produced 5 extra false resolutions; it wins on raw accuracy (59% golden) and is
+the wrong choice for any cost ratio above 2. Routing each flip back through `apply_policy` — the
+reviewer may not resolve where the gate itself would have been forbidden to — cut that to 8 flips
+and 1 extra false resolution. **Accuracy would have selected the worse system.**
+
+**5. The policy layer is very nearly inert.** `n_policy_overrides` is **1 across 160 items** — a
 single `partial`-coverage downgrade. The sweep confirms it: flipping `escalate_on_partial` moves
 golden accuracy 49% → 50% and adversarial not at all.
 
@@ -208,12 +267,12 @@ is confident mislabeling. The gate's value comes almost entirely from the model'
 self-assessment, not from the deterministic layer beneath it. The layer is cheap and
 one-directional so it stays — but a design resting on it would be resting on nothing.
 
-**5. Injection detection and injection disposition are different problems.** The gate flags
+**6. Injection detection and injection disposition are different problems.** The gate flags
 `injection_attempt_detected=True` on **10 of 10** injection items — perfect detection. It then
 answers 8 of them with `CLARIFY` regardless of what the underlying request needed. Recognising an
 attack is far easier than continuing to reason normally once you have.
 
-**6. Retrieval scores carry no confidence signal.** An earlier approach thresholded on retrieval
+**7. Retrieval scores carry no confidence signal.** An earlier approach thresholded on retrieval
 score. RRF scores encode *rank*, not match quality — a chunk ranked #1 by both retrievers always
 scores 0.0164, whether it answers the question or is merely the least-bad of 10,068. Measured,
 near_miss tickets score *higher* than golden ones, and the best threshold tuned directly on the
@@ -221,11 +280,10 @@ test set reached only 72.5%. The judgement has to be made by something that read
 
 ## What I would do next
 
-1. **Attack over-deferral with a mechanism, not wording.** Finding 3 rules out the cheap version.
-   Candidates, roughly in order of how much I would trust them: few-shot examples of correct
-   RESOLVE decisions drawn from the golden set; a second pass that reviews only CLARIFY decisions
-   and asks whether the question was necessary; a calibrated threshold on something external to
-   the model's own self-assessment.
+1. **Keep pushing on over-deferral.** The reviewer took it from 53 false escalations to 46; the
+   ship bar needs roughly 15. The next candidates are few-shot examples of correct RESOLVE
+   decisions drawn from the golden set, and a reviewer that sees the *reference* answer format
+   rather than only the excerpts.
 2. **Fix injection disposition.** Detection is solved (10/10); disposition is not (2/10). Making
    it a procedure — restate the request with instructions stripped, then grade the restatement —
    moved it one item, which is nothing at n=10. Needs a bigger injection set before it can even
@@ -240,6 +298,17 @@ test set reached only 72.5%. The judgement has to be made by something that read
 
 - **Single model, single run.** No seeds, repeats, or confidence intervals. Decision accuracy on
   60 items carries roughly ±12 points; category-level numbers (n=10–20) are directional only.
+- **The reviewer's numbers come from a replay, not a fresh end-to-end run.** The 72 reviewer calls
+  were real, against the live model, but they were made over the base gate's *cached* decisions
+  rather than re-running both stages together. Because the reviewer only reads the gate's output
+  and never feeds back into it, the composition is exact — what a fresh run would add is
+  run-to-run variance, which this project does not measure anywhere. The replay is
+  `src/eval/review_replay.py`, its output `eval_results/clarify_review_replay.json`.
+- **The reviewer's two guards were chosen after seeing which flips failed.** Both have an argument
+  from first principles — respect the invariants the policy layer already enforces; do not relax
+  caution on a ticket carrying an active attack — but I did not write them down before looking at
+  the data, and with only 15 flips to learn from, some fitting to this eval set is likely. They
+  need a fresh adversarial set to be trusted.
 - **Prompt revisions measured unevenly.** v1 and v3 have adversarial numbers; only v3 and v4 were
   measured on both sets. The effect of the v1 → v3 step-1 fix on false escalation was never
   measured, and given what v4 did, it may well have made it worse.
@@ -264,8 +333,9 @@ OpenAI-wire code path in `src/llm_client.py`; swapping is a config change, not a
 
 The eval is deliberately cheap. Decision accuracy needs no LLM judge, and the baseline arm needs
 no API calls at all — its decision policy is a pure function, scored offline. Every report records
-its own `token_spend`. The full result above (160 gated items plus two earlier prompt revisions)
-cost roughly **$0.55**.
+its own `token_spend`. The whole project — five prompt revisions, both eval sets, and the reviewer
+replay — came to about **$1.10**. The reviewer adds one call per CLARIFY rather than a second pass
+over every ticket: 72 calls, ~196K input + ~37K output.
 
 On a reasoning model, hidden reasoning tokens share the completion budget and bill at the output
 rate: at `max_tokens=1536` the structured call returned `{}` — a successful, billed, empty
