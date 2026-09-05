@@ -1,0 +1,59 @@
+{
+  "matched_traces": 160,
+  "settings": [
+    {
+      "escalate_on_partial": true,
+      "n_golden": 100,
+      "n_adversarial": 60,
+      "golden_decision_accuracy": 0.49,
+      "adversarial_decision_accuracy": 0.7166666666666667,
+      "adversarial_by_category": {
+        "ambiguous": {
+          "n": 20,
+          "decision_accuracy": 1.0
+        },
+        "injection": {
+          "n": 10,
+          "decision_accuracy": 0.2
+        },
+        "near_miss": {
+          "n": 10,
+          "decision_accuracy": 0.8
+        },
+        "out_of_kb": {
+          "n": 20,
+          "decision_accuracy": 0.65
+        }
+      },
+      "false_escalation_rate": 0.51,
+      "deferral_precision": 0.5046728971962616
+    },
+    {
+      "escalate_on_partial": false,
+      "n_golden": 100,
+      "n_adversarial": 60,
+      "golden_decision_accuracy": 0.5,
+      "adversarial_decision_accuracy": 0.7166666666666667,
+      "adversarial_by_category": {
+        "ambiguous": {
+          "n": 20,
+          "decision_accuracy": 1.0
+        },
+        "injection": {
+          "n": 10,
+          "decision_accuracy": 0.2
+        },
+        "near_miss": {
+          "n": 10,
+          "decision_accuracy": 0.8
+        },
+        "out_of_kb": {
+          "n": 20,
+          "decision_accuracy": 0.65
+        }
+      },
+      "false_escalation_rate": 0.5,
+      "deferral_precision": 0.5094339622641509
+    }
+  ]
+}

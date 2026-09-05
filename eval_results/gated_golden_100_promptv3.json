@@ -1,0 +1,838 @@
+{
+  "mode": "sampled (live resolver + LLM judge, subset of the eval sets)",
+  "sampled": true,
+  "sample_seed": 0,
+  "resolver": "gated",
+  "judged": false,
+  "llm_provider": "openai",
+  "resolver_model": "gpt-5-mini",
+  "judge_model": null,
+  "n_golden": 100,
+  "n_adversarial": 0,
+  "n_golden_attempted": 100,
+  "n_adversarial_attempted": 0,
+  "n_golden_available": 100,
+  "n_adversarial_available": 60,
+  "n_failed": 0,
+  "failures": [],
+  "token_spend": {
+    "input_tokens": 401563,
+    "output_tokens": 76835,
+    "calls": 100,
+    "total_tokens": 478398
+  },
+  "golden_decision_accuracy": 0.49,
+  "golden_groundedness_rate": null,
+  "golden_hallucination_rate": null,
+  "golden_mean_correctness": null,
+  "adversarial_decision_accuracy": null,
+  "adversarial_hallucination_rate": null,
+  "adversarial_by_category": {},
+  "false_escalation_rate": 0.51,
+  "deferral_precision": 0.0,
+  "n_policy_overrides": 1,
+  "golden_results": [
+    {
+      "item_id": "G001",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G002",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G003",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G004",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": "kb_coverage='partial' cannot resolve"
+    },
+    {
+      "item_id": "G005",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G006",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G007",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G008",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G009",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G010",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G011",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G012",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G013",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G014",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G015",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G016",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G017",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G018",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G019",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G020",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G021",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G022",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G023",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G024",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G025",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G026",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G027",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G028",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G029",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G030",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G031",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G032",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G033",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G034",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G035",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G036",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G037",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G038",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G039",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G040",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G041",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G042",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G043",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G044",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G045",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G046",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G047",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G048",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G049",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G050",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G051",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G052",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G053",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G054",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G055",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G056",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G057",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G058",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G059",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G060",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G061",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G062",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G063",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G064",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G065",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G066",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G067",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G068",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G069",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G070",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G071",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G072",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G073",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G074",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G075",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G076",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G077",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G078",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G079",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G080",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G081",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G082",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G083",
+      "decision": "ESCALATE",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G084",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G085",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G086",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G087",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G088",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G089",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G090",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G091",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G092",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G093",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G094",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G095",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G096",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G097",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G098",
+      "decision": "RESOLVE",
+      "decision_correct": true,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G099",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    },
+    {
+      "item_id": "G100",
+      "decision": "CLARIFY",
+      "decision_correct": false,
+      "grounded": null,
+      "correctness_score": null,
+      "policy_override": null
+    }
+  ],
+  "adversarial_results": [],
+  "sampling_note": "Scored 100/100 golden and 0/60 adversarial items. Rates are computed over the sampled items only and carry wide confidence intervals at this n -- treat as a smoke-grade signal, not the baseline. Sampling was forced by free-tier daily quota."
+}
