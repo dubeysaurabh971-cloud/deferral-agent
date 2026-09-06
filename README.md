@@ -357,8 +357,13 @@ test set reached only 72.5%. The judgement has to be made by something that read
 pip install -r requirements.txt
 cp .env.example .env          # add a key; set LLM_PROVIDER
 python run.py --ingest        # download WixQA, chunk, embed (~5 min first run)
-python run.py                 # interactive: paste a ticket
+python run.py                 # interactive: paste a ticket, get a decision
+python run.py --compare       # baseline and gate on the same ticket, side by side
 ```
+
+`--compare` is the quickest way to see what this project is about: paste an out-of-KB ticket and
+watch the baseline answer it confidently with citations while the gate escalates. `--resolver
+naive` runs the ungated baseline alone.
 
 Providers: Anthropic, OpenAI, Google (Gemini), xAI (Grok). All but Anthropic share one
 OpenAI-wire code path in `src/llm_client.py`; swapping is a config change, not a rewrite.
