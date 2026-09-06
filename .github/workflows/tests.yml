@@ -16,7 +16,11 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      # The suite is deliberately offline: no API key, no vector store, no network. It covers the
+      # The suite is offline: no API key, no vector store, no network. Verified by running it with
+      # the HuggingFace Hub unreachable -- the one test that needs the Hub (the golden-set builder)
+      # is marked `network` and skipped unless RUN_NETWORK_TESTS=1. It used to call
+      # build_golden_set(), which hits load_dataset(), so the badge was green because runners have
+      # internet rather than because the tests were self-contained. It covers the
       # decision policy, the clarification reviewer's guards, and the eval maths -- the parts that
       # must not drift silently.
       #

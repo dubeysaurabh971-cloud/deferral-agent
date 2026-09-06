@@ -1,15 +1,15 @@
 {
   "mechanism": "clarification reviewer replayed over cached v3 CLARIFY decisions",
   "n_reviewed": 72,
-  "configuration": "ungoverned (every proposed flip taken)",
-  "n_flips_applied": 15,
-  "golden_decision_accuracy": 0.59,
+  "configuration": "governed (policy re-check + no injection) \u2014 SHIPPED",
+  "n_flips_applied": 8,
+  "golden_decision_accuracy": 0.56,
   "adversarial_decision_accuracy": 0.7,
-  "false_escalations": 43,
-  "false_resolutions": 9,
-  "misrouted_deferrals": 7,
-  "error_cost_formula": "9C + 50",
-  "false_escalation_rate_golden": 0.41,
+  "false_escalations": 46,
+  "false_resolutions": 5,
+  "misrouted_deferrals": 11,
+  "error_cost_formula": "5C + 57",
+  "false_escalation_rate_golden": 0.44,
   "adversarial_by_category": {
     "ambiguous": {
       "n": 20,
@@ -29,6 +29,7 @@
     }
   },
   "n_flips_proposed": 15,
+  "n_flips_blocked": 7,
   "token_spend": {
     "input_tokens": 196491,
     "output_tokens": 37100,

@@ -100,7 +100,9 @@ on these 160 items is linear in `C`, and the three configurations rank different
 
 The ungoverned row is the only one whose error counts are not in a table above: it makes **9**
 false resolutions and **43** false escalations, and its 4 extra flips land on tickets that were
-already-wrong deferrals, so misrouted drops 11 → 7. Hence 9C + 50 rather than 9C + 54.
+already-wrong deferrals, so misrouted drops 11 → 7. Hence 9C + 50 rather than 9C + 54. Both rows
+are committed as reports — `clarify_review_replay.json` and `clarify_review_replay_governed.json`
+— each carrying its own `error_cost_formula` field.
 
 Three things fall out of this, and only the first was obvious in advance:
 
@@ -336,7 +338,10 @@ test set reached only 72.5%. The judgement has to be made by something that read
   rather than re-running both stages together. Because the reviewer only reads the gate's output
   and never feeds back into it, the composition is exact — what a fresh run would add is
   run-to-run variance, which this project does not measure anywhere. The replay is
-  `src/eval/review_replay.py`, its output `eval_results/clarify_review_replay.json`.
+  `src/eval/review_replay.py`; it writes `clarify_review_replay_governed.json` (the shipped
+  configuration, the third column above) and `clarify_review_replay.json` (the ungoverned variant,
+  for the comparison in finding 4). `--from-cache` rescores both from the saved verdicts with no
+  API calls, so every number in that column is reproducible offline.
 - **The reviewer's two guards were chosen after seeing which flips failed.** Both have an argument
   from first principles — respect the invariants the policy layer already enforces; do not relax
   caution on a ticket carrying an active attack — but I did not write them down before looking at
