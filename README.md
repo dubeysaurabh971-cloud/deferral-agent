@@ -207,7 +207,8 @@ underspecified, and step 1 answered before step 3 could say the KB has nothing.
 
 Adding a second test — *would the customer's reply change what happens next?* — moved adversarial
 accuracy 56.7% → 71.7%: out_of_kb 25% → 65%, near_miss 60% → 80%, ambiguous held at 100%, false
-resolutions flat at 4. Asking a question you cannot use the answer to is not caution; it costs a
+resolutions flat at 4, and injection *down* 30% → 20%. That last one is a regression, one item at
+n=10, and it is the price of the other three. Asking a question you cannot use the answer to is not caution; it costs a
 round trip and still ends in a handoff.
 
 **2. The same over-asking survives on answerable tickets, and that is where it costs.** Of 100
@@ -311,8 +312,10 @@ test set reached only 72.5%. The judgement has to be made by something that read
 3. **Get a real cost ratio.** The break-even is 1.19 and the whole ship/no-ship argument turns on
    whether reality clears it. That is a question for whoever owns the support queue, not a
    modelling question.
-4. **Always measure both sets.** Two of the three prompt revisions here were tuned on adversarial
-   alone, and both times the golden number moved in a direction I did not see coming.
+4. **Always measure both sets.** Two of the four prompt revisions here were tuned on adversarial
+   alone. Only one of them was ever checked against golden afterwards — and when it was, golden had
+   moved 7 points in the direction I was not watching. The other one's golden effect is still
+   unmeasured, which is its own answer.
 
 ## Limitations
 
@@ -354,7 +357,7 @@ OpenAI-wire code path in `src/llm_client.py`; swapping is a config change, not a
 
 The eval is deliberately cheap. Decision accuracy needs no LLM judge, and the baseline arm needs
 no API calls at all — its decision policy is a pure function, scored offline. Every report records
-its own `token_spend`. The whole project — five prompt revisions, both eval sets, and the reviewer
+its own `token_spend`. The whole project — four prompt revisions, both eval sets, and the reviewer
 replay — came to about **$1.10**. The reviewer adds one call per CLARIFY rather than a second pass
 over every ticket: 72 calls, ~196K input + ~37K output.
 
