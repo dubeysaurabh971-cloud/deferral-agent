@@ -6,6 +6,11 @@ The Space must never run ingestion: free Spaces sleep on idle and lose non-persi
 restart, so a boot-time `--ingest` would rerun on every wake and take ~5 minutes each time. This
 ships a prebuilt index instead.
 
+Hosting caveat: Hugging Face no longer runs Docker or Gradio Spaces on the free tier (402
+Payment Required, PRO only, checked September 2026). The Dockerfile below is still correct; it
+needs a host that will run it. See deploy/README.md for measured memory (728MB RSS) and which
+free tiers that rules in and out.
+
 The index is slimmed on the way out. Chroma builds an FTS5 full-text index over all 10,068
 documents, which this pipeline never queries -- BM25 runs separately in retrieval.py over
 chunks.jsonl via rank_bm25, and the Chroma call is `query_texts`, i.e. dense only. Dropping those

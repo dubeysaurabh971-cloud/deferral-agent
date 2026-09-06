@@ -353,6 +353,15 @@ python run.py                 # interactive: paste a ticket
 Providers: Anthropic, OpenAI, Google (Gemini), xAI (Grok). All but Anthropic share one
 OpenAI-wire code path in `src/llm_client.py`; swapping is a config change, not a rewrite.
 
+There is also a local web demo that shows the full decision trace for a pasted ticket, and lets
+you toggle the clarification reviewer on and off to watch a decision change:
+
+```bash
+streamlit run demo_app.py
+```
+
+Deployment notes, measured memory, and which free hosts can actually run this: `deploy/README.md`.
+
 ## Cost
 
 The eval is deliberately cheap. Decision accuracy needs no LLM judge, and the baseline arm needs
