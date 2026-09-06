@@ -1,5 +1,8 @@
 # deferral-agent
 
+[![tests](https://github.com/dubeysaurabh971-cloud/deferral-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/dubeysaurabh971-cloud/deferral-agent/actions/workflows/tests.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A support-ticket RAG agent that decides whether to answer, ask, or hand off — and an honest
 measurement of what that costs.
 
@@ -8,7 +11,8 @@ ticket the gate answered, asked about, or handed off, with its reasoning and cov
 key, no backend; generated from the trace log.
 
 > **What this proves.** A single structured self-assessment call can near-eliminate confidently
-> wrong answers in support RAG — false resolutions **58 → 4** — and this trade-off has to be
+> wrong answers in support RAG — false resolutions **58 → 5** in the shipped configuration, 4 with
+> the reviewer off — and this trade-off has to be
 > scored on asymmetric error cost, not raw accuracy: a wrong authoritative answer and a needless
 > handoff are not the same mistake.
 >
@@ -30,7 +34,8 @@ produces confident, well-cited prose for questions its knowledge base cannot ans
 project builds a deferral gate on top of a naive RAG baseline and measures both sides of the
 trade: what deferring buys, and what it costs.
 
-**Short version: the gate cuts false resolutions from 58 to 4 — a 93% reduction — and takes
+**Short version: the gate cuts false resolutions from 58 to 5 — a 91% reduction, or to 4 with the
+clarification reviewer disabled — and takes
 adversarial decision accuracy from 3.3% to 71.7%. It pays for that by deferring too readily,
 refusing 44% of answerable tickets even in its best configuration.** Whether that is a good trade
 depends on what a wrong confident answer costs relative to an unnecessary handoff. That
@@ -93,6 +98,10 @@ on these 160 items is linear in `C`, and the three configurations rank different
 | + reviewer, ungoverned | 9C + 50 | **59** | 68 | 77 | 95 | 113 | 140 |
 | + reviewer, governed | 5C + 57 | 62 | **67** | **72** | **82** | **92** | 107 |
 
+The ungoverned row is the only one whose error counts are not in a table above: it makes **9**
+false resolutions and **43** false escalations, and its 4 extra flips land on tickets that were
+already-wrong deferrals, so misrouted drops 11 → 7. Hence 9C + 50 rather than 9C + 54.
+
 Three things fall out of this, and only the first was obvious in advance:
 
 1. **The gate beats the baseline for any C > 1.19.** That threshold is computed from the measured
@@ -133,7 +142,8 @@ By adversarial category:
 
 ### Is this a good trade?
 
-On error cost, yes, within the window above. The gate eliminates 54 of the baseline's 58 false
+On error cost, yes, within the window above. The shipped configuration eliminates 53 of the
+baseline's 58 false
 resolutions, which is the failure this system exists to prevent.
 
 On automation rate, no. Even with the reviewer, 44% of answerable tickets still reach a human and

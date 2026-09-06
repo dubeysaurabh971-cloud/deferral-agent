@@ -16,3 +16,6 @@ eval_results/gated_sampled.json
 
 # Space build output (regenerate with: python -m deploy.build_space)
 space_build/
+
+# editor config is machine-specific (interpreter path)
+.vscode/

@@ -1,0 +1,31 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # The suite is deliberately offline: no API key, no vector store, no network. It covers the
+      # decision policy, the clarification reviewer's guards, and the eval maths -- the parts that
+      # must not drift silently.
+      #
+      # Only what `import src.resolver` actually needs at module load. That is chromadb, rank_bm25,
+      # pydantic and python-dotenv; sentence-transformers (and therefore torch, 528MB) is loaded
+      # lazily by chromadb when an embedding function is instantiated, which no test does. Installing
+      # requirements.txt here would add several minutes for packages the tests never touch.
+      - name: Install test dependencies
+        run: pip install pytest chromadb rank_bm25 pydantic python-dotenv
+
+      - name: Run tests
+        run: python -m pytest -q
