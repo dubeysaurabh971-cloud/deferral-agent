@@ -1,6 +1,6 @@
 {
-  "mode": "sampled (live resolver + LLM judge, subset of the eval sets)",
-  "sampled": true,
+  "mode": "golden not scored, adversarial complete (live resolver, decision metrics only)",
+  "sampled": false,
   "sample_seed": 0,
   "resolver": "gated",
   "judged": false,
@@ -595,5 +595,6 @@
       "policy_override": null
     }
   ],
-  "sampling_note": "Scored 0/100 golden and 60/60 adversarial items. Rates are computed over the sampled items only and carry wide confidence intervals at this n -- treat as a smoke-grade signal, not the baseline. Sampling was forced by free-tier daily quota."
+  "golden_coverage": "not scored",
+  "adversarial_coverage": "complete"
 }

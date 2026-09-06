@@ -350,8 +350,11 @@ test set reached only 72.5%. The judgement has to be made by something that read
 - **Prompt revisions measured unevenly.** v1 and v3 have adversarial numbers; only v3 and v4 were
   measured on both sets. The effect of the v1 → v3 step-1 fix on false escalation was never
   measured, and given what v4 did, it may well have made it worse.
-- **Groundedness and correctness not measured at scale.** They ran on 6 golden items during
-  development (groundedness 1.0, mean correctness 4.67/5) — a smoke signal, not a result.
+- **Groundedness and correctness not measured at scale, and not on this model.** They ran on 6
+  golden items during development (groundedness 1.0, mean correctness 4.67/5) — a smoke signal, not
+  a result — and that run used `gemini-3.5-flash-lite` with a Gemini judge, before the switch to
+  `gpt-5-mini`. See `eval_results/baseline_sampled.json`. Every other figure in this README is
+  gpt-5-mini.
 - **The 160-item mix is arbitrary.** Every combined figure — raw accuracy, deferral precision, and
   the cost curves that set the 1.19 and 7.0 thresholds — assumes a 100:60 answerable-to-adversarial
   ratio. Real traffic has its own ratio, and all of it moves with it.

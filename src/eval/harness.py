@@ -74,6 +74,25 @@ def deferral_metrics(golden_results: list[dict], adversarial_results: list[dict]
     return false_escalation_rate, deferral_precision
 
 
+def describe_coverage(scored: int, available: int) -> str:
+    """complete | subsampled | not scored -- per eval set.
+
+    Distinguishing these matters: a run with --adversarial-n 0 scores golden completely and skips
+    the other set, which is not the same claim as having sampled both under a quota.
+    """
+    if scored == 0:
+        return "not scored"
+    return "complete" if scored >= available else "subsampled"
+
+
+def describe_mode(golden_state: str, adversarial_state: str, judged: bool) -> str:
+    scorers = "live resolver + LLM judge" if judged else "live resolver, decision metrics only"
+    if golden_state == adversarial_state == "complete":
+        return f"full ({scorers})"
+    parts = [f"golden {golden_state}", f"adversarial {adversarial_state}"]
+    return f"{', '.join(parts)} ({scorers})"
+
+
 def baseline_decision_policy(_item: dict) -> str:
     """The Week 1 naive resolver never gates: it always resolves."""
     return "RESOLVE"
@@ -264,16 +283,18 @@ def run_full_report(
 
     false_escalation_rate, deferral_precision = deferral_metrics(golden_results, adversarial_results)
 
-    sampled = len(golden) < len(all_golden) or len(adversarial) < len(all_adversarial)
+    # Completeness is per set, and skipping a set is not the same as subsampling it. Running with
+    # --adversarial-n 0 scores golden completely; calling that report "sampled ... forced by
+    # free-tier quota" told a reader checking the headline numbers that a 100/100 run was partial.
+    golden_state = describe_coverage(len(golden_results), len(all_golden))
+    adversarial_state = describe_coverage(len(adversarial_results), len(all_adversarial))
+    subsampled = "subsampled" in (golden_state, adversarial_state)
+    sampled = subsampled  # kept for report back-compat; true only when a set was actually cut down
     golden_groundedness = accuracy(golden_results, "grounded")
     adversarial_groundedness = accuracy(adversarial_results, "grounded")
 
     report = {
-        "mode": (
-            "sampled (live resolver + LLM judge, subset of the eval sets)"
-            if sampled
-            else "full (live resolver + LLM judge)"
-        ),
+        "mode": describe_mode(golden_state, adversarial_state, judge),
         "sampled": sampled,
         "sample_seed": seed if sampled else None,
         "resolver": resolver_name,
@@ -322,12 +343,14 @@ def run_full_report(
         "golden_results": golden_results,
         "adversarial_results": adversarial_results,
     }
-    if sampled:
+    report["golden_coverage"] = golden_state
+    report["adversarial_coverage"] = adversarial_state
+    if subsampled:
         report["sampling_note"] = (
             f"Scored {len(golden_results)}/{len(all_golden)} golden and "
-            f"{len(adversarial_results)}/{len(all_adversarial)} adversarial items. Rates are computed "
-            "over the sampled items only and carry wide confidence intervals at this n -- treat as a "
-            "smoke-grade signal, not the baseline. Sampling was forced by free-tier daily quota."
+            f"{len(adversarial_results)}/{len(all_adversarial)} adversarial items. Rates over a "
+            "subsampled set carry wide confidence intervals at this n -- treat as a smoke-grade "
+            "signal, not a baseline."
         )
     return report
 

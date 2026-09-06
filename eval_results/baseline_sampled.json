@@ -1,5 +1,5 @@
 {
-  "mode": "sampled (live resolver + LLM judge, subset of the eval sets)",
+  "mode": "golden subsampled, adversarial subsampled (live resolver + LLM judge)",
   "sampled": true,
   "sample_seed": 0,
   "llm_provider": "gemini",
@@ -107,5 +107,7 @@
       "grounded": true
     }
   ],
-  "sampling_note": "Scored 6/100 golden and 4/60 adversarial items. Rates are computed over the sampled items only and carry wide confidence intervals at this n -- treat as a smoke-grade signal, not the baseline. Sampling was forced by free-tier daily quota."
+  "sampling_note": "Scored 6/100 golden and 4/60 adversarial items. Rates over a subsampled set carry wide confidence intervals at this n -- treat as a smoke-grade signal, not a baseline.",
+  "golden_coverage": "subsampled",
+  "adversarial_coverage": "subsampled"
 }

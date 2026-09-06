@@ -1,5 +1,5 @@
 {
-  "mode": "full (live resolver + LLM judge)",
+  "mode": "full (live resolver, decision metrics only)",
   "sampled": false,
   "sample_seed": null,
   "resolver": "gated",
@@ -1395,5 +1395,7 @@
       "grounded": null,
       "policy_override": null
     }
-  ]
+  ],
+  "golden_coverage": "complete",
+  "adversarial_coverage": "complete"
 }
