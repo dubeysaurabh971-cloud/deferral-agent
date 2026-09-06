@@ -20,12 +20,15 @@ jobs:
       # decision policy, the clarification reviewer's guards, and the eval maths -- the parts that
       # must not drift silently.
       #
-      # Only what `import src.resolver` actually needs at module load. That is chromadb, rank_bm25,
-      # pydantic and python-dotenv; sentence-transformers (and therefore torch, 528MB) is loaded
-      # lazily by chromadb when an embedding function is instantiated, which no test does. Installing
-      # requirements.txt here would add several minutes for packages the tests never touch.
+      # This is every module the test files import transitively, and no more:
+      #   chromadb, rank_bm25  <- src.retrieval, imported by src.resolver
+      #   datasets             <- src.golden, imported by tests/test_eval_harness.py
+      #   pydantic, dotenv     <- src.gate, src.review, src.config
+      # sentence-transformers (and therefore torch, 528MB) is deliberately absent: chromadb loads
+      # it lazily when an embedding function is instantiated, which no test does. Installing
+      # requirements.txt instead would add minutes for packages the tests never touch.
       - name: Install test dependencies
-        run: pip install pytest chromadb rank_bm25 pydantic python-dotenv
+        run: pip install pytest chromadb rank_bm25 datasets pydantic python-dotenv
 
       - name: Run tests
         run: python -m pytest -q
