@@ -13,3 +13,6 @@ eval_results/gated_sampled.json
 
 # generated: the explorer regenerates these from traces/runs.jsonl
 # (kept in git so GitHub Pages can serve them without a build step)
+
+# Space build output (regenerate with: python -m deploy.build_space)
+space_build/
