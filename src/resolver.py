@@ -88,7 +88,7 @@ class GatedResolver:
         self.escalate_on_partial = escalate_on_partial
         if review_clarifications is None:
             review_clarifications = (
-                True
+                review.review_is_worthwhile(cost_ratio) if cost_ratio is not None else True
             )
         self.review_clarifications = review_clarifications
         self.cost_ratio = cost_ratio
