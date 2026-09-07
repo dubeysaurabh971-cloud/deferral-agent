@@ -209,3 +209,194 @@ def test_nlargest_selection_matches_a_full_sort_including_ties():
         # and that nlargest itself agrees with the construct it replaced
         old_idx = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:3]
         assert want_idx == old_idx, f"tie-break diverged on {scores}"
+
+
+# --- one definition of the error taxonomy ------------------------------------------
+
+def test_classify_is_consistent_with_taxonomy_over_the_whole_input_space():
+    """taxonomy() is built on classify(), so they cannot disagree -- this pins that they are
+    still wired together rather than merely equal today.
+
+    There were two definitions. taxonomy() counted false escalations over golden items alone;
+    the explorer's exporter called any resolve-expecting item that got deferred a false
+    escalation. They differed on exactly one of 160 items, so the published page reported 15
+    where its source report said 14, and the page was internally consistent with its own wrong
+    classifier.
+    """
+    import itertools
+
+    from src.eval.compare import (
+        FALSE_ESCALATION, FALSE_RESOLUTION, MISROUTED, UNWARRANTED_DEFERRAL, classify, taxonomy,
+    )
+
+    decisions = ("RESOLVE", "CLARIFY", "ESCALATE")
+    golden, adversarial, expect = [], [], {k: 0 for k in
+                                          (FALSE_ESCALATION, FALSE_RESOLUTION, MISROUTED,
+                                           UNWARRANTED_DEFERRAL)}
+    n = 0
+    for expected, decision in itertools.product(decisions, decisions):
+        # golden items always expect RESOLVE, so only that row is constructible there
+        if expected == "RESOLVE":
+            n += 1
+            golden.append({"item_id": f"G{n}", "decision": decision,
+                           "expected_decision": "RESOLVE"})
+            kind = classify("golden", "RESOLVE", decision)
+            if kind:
+                expect[kind] += 1
+        n += 1
+        adversarial.append({"item_id": f"A{n}", "decision": decision,
+                            "expected_decision": expected, "category": "x"})
+        kind = classify("adversarial", expected, decision)
+        if kind:
+            expect[kind] += 1
+
+    t = taxonomy({"golden_results": golden, "adversarial_results": adversarial})
+    assert t["false_escalations"] == expect[FALSE_ESCALATION]
+    assert t["false_resolutions"] == expect[FALSE_RESOLUTION]
+    assert t["misrouted_deferrals"] == expect[MISROUTED]
+    assert t["unwarranted_adversarial_deferrals"] == expect[UNWARRANTED_DEFERRAL]
+
+
+def test_false_escalation_stays_golden_only():
+    """The convention every headline figure and the cost model use. An adversarial ticket that
+    expects RESOLVE and was deferred is a real unnecessary handoff, but it is not a false
+    escalation, because that is a rate over the 100 answerable golden items."""
+    from src.eval.compare import FALSE_ESCALATION, UNWARRANTED_DEFERRAL, classify
+
+    assert classify("golden", "RESOLVE", "CLARIFY") == FALSE_ESCALATION
+    assert classify("adversarial", "RESOLVE", "CLARIFY") == UNWARRANTED_DEFERRAL
+    assert classify("adversarial", "RESOLVE", "RESOLVE") is None
+
+
+def test_deferral_errors_counts_every_unnecessary_handoff():
+    """All three cost one handoff, so all three are in the cost model's constant term."""
+    from src.eval.compare import deferral_errors
+
+    t = {"false_escalations": 12, "misrouted_deferrals": 5,
+         "unwarranted_adversarial_deferrals": 1}
+    assert deferral_errors(t) == 18
+
+
+def test_exported_summary_equals_taxonomy_of_its_source_report(monkeypatch, tmp_path):
+    """The published artefact must agree with the artefact it was reconstructed from.
+
+    This is the check that would have caught the off-by-one: the page and its source report were
+    never compared, so a divergence in the classifier was invisible from either side alone -- the
+    page was internally consistent with its own wrong rules.
+
+    Self-contained: the real traces/runs.jsonl is gitignored and absent in CI, so a trace log is
+    synthesised from the report's own recorded labels. That also exercises the --from-report join
+    itself, since the traces have no gate_config and must be matched on labels alone.
+    """
+    import json as _json
+
+    from src.eval import export_traces
+    from src.eval.compare import taxonomy
+
+    source_name = "v5_shipped_run3.json"
+    source = _json.loads(
+        (export_traces.config.ROOT_DIR / "eval_results" / source_name).read_text(encoding="utf-8")
+    )
+
+    golden = {it["item_id"]: it["question"] for it in export_traces.load_jsonl(
+        export_traces.config.DATA_DIR / "golden" / "golden_set.jsonl")}
+    adver = {it["item_id"]: it["ticket_text"] for it in export_traces.load_jsonl(
+        export_traces.config.DATA_DIR / "adversarial" / "adversarial_set.jsonl")}
+    texts = {**golden, **adver}
+
+    traces_dir = tmp_path / "traces"
+    traces_dir.mkdir()
+    with (traces_dir / "runs.jsonl").open("w", encoding="utf-8") as f:
+        for row in source["golden_results"] + source["adversarial_results"]:
+            f.write(_json.dumps({
+                "resolver": "gated",
+                "ticket_text": texts[row["item_id"]],
+                "decision": row["decision"],
+                "model_decision": row["model_decision"],
+                "kb_coverage": row["kb_coverage"],
+                "requires_human_authority": row["requires_human_authority"],
+                "missing_information": row["missing_information"],
+                "clarify_review": row["clarify_review"],
+                "policy_override": row["policy_override"],
+                "reasoning": "synthesised for this test",
+                "answer": "a",
+                "retrieved_chunks": [],
+            }) + "\n")
+
+    monkeypatch.setattr(export_traces.config, "TRACES_DIR", traces_dir)
+    monkeypatch.setattr(export_traces, "OUT", tmp_path / "data.js")
+    export_traces.main(from_report=source_name)
+
+    raw = (tmp_path / "data.js").read_text(encoding="utf-8")
+    page = _json.loads(raw[raw.index("=") + 1:].rstrip().rstrip(";"))
+
+    t = taxonomy(source)
+    expected = {k: v for k, v in {
+        "false_resolution": t["false_resolutions"],
+        "false_escalation": t["false_escalations"],
+        "misrouted": t["misrouted_deferrals"],
+        "unwarranted_deferral": t["unwarranted_adversarial_deferrals"],
+    }.items() if v}
+
+    assert page["summary"]["n"] == 160, "every item must have been matched"
+    assert page["summary"]["errors"] == expected, (
+        "the published summary disagrees with taxonomy() of its source report"
+    )
+
+    # and the summary must equal the rows it sits above
+    from collections import Counter
+    from_rows = Counter(r["error_type"] for r in page["rows"] if r["error_type"])
+    assert page["summary"]["errors"] == dict(from_rows)
+
+
+# --- finding 9's figures must match the committed artefact --------------------------
+
+def test_recall_figures_in_the_docs_match_the_committed_sweep():
+    """The README and config.py quote finding 9's recall numbers in prose. Committing the sweep
+    caught two errors in them immediately -- an 80% that was computed over a different
+    denominator, and a "77% -> 80% -> 84%" that was the pool-60 row transposed into the
+    top_k=10 column. This pins them to eval_results/v5_recall.json so it cannot recur.
+
+    Reads only committed files, so it runs in CI even though regenerating the sweep needs the
+    index.
+    """
+    import json as _json
+
+    from src import config
+
+    sweep_path = config.ROOT_DIR / "eval_results" / "v5_recall.json"
+    data = _json.loads(sweep_path.read_text(encoding="utf-8"))
+    sweep, split = data["sweep"], data["split"]
+
+    readme = (config.ROOT_DIR / "README.md").read_text(encoding="utf-8")
+    cfg_src = (config.ROOT_DIR / "src" / "config.py").read_text(encoding="utf-8")
+
+    # the top_k curve at the shipped candidate pool, as quoted in config.py's table
+    pool = config.RETRIEVAL_CANDIDATE_POOL
+    curve = {k: f"{sweep[f'pool{pool}_topk{k}']['recall']:.0%}" for k in (5, 8, 10, 12)}
+    assert curve == {5: "76%", 8: "86%", 10: "88%", 12: "90%"}, curve
+    for pct in curve.values():
+        assert pct in cfg_src, f"config.py's recall table is missing {pct}"
+
+    # the pool comparison at top_k=10 -- a column, not a row
+    column = " -> ".join(f"{sweep[f'pool{p}_topk10']['recall']:.0%}" for p in (20, 40, 60))
+    assert column == "88% -> 87% -> 84%", column
+    assert column in cfg_src
+    assert column.replace(" -> ", " → ") in readme
+
+    # the split that turns a global number into a diagnosis
+    assert f"{split['recall_on_always_deferred']:.0%}" == "54%"
+    assert f"{split['recall_on_the_rest']:.0%}" == "79%"
+    assert split["n_always_deferred"] == 13
+    assert "**54%** (7 of 13)" in readme
+    assert "**79%** (69 of 87)" in readme
+
+    # and the claim the whole finding rests on
+    missed = split["n_always_deferred"] - round(
+        split["recall_on_always_deferred"] * split["n_always_deferred"]
+    )
+    assert missed == 6, "6 of the 13 always-deferred items had no reference article retrieved"
+    assert sweep[f"pool{pool}_topk5"]["n_hit"] == 76, (
+        "24 of 100 answerable tickets were unanswerable from their context at top_k=5 -- the "
+        "floor finding 9 is about"
+    )

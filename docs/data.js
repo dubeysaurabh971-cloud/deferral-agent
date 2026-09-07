@@ -4,9 +4,10 @@ window.DECISIONS = {
   "golden_accuracy": 0.86,
   "adversarial_accuracy": 0.6833333333333333,
   "errors": {
-   "false_escalation": 15,
    "false_resolution": 14,
-   "misrouted": 4
+   "false_escalation": 14,
+   "misrouted": 4,
+   "unwarranted_deferral": 1
   },
   "by_category": {
    "ambiguous": {
@@ -6126,7 +6127,7 @@ window.DECISIONS = {
     "Growing Your Site Traffic with the Wix AI Assistant",
     "Wix Stores Request: Selecting a Renewal Date for Product Subscriptions"
    ],
-   "error_type": "false_escalation"
+   "error_type": "unwarranted_deferral"
   },
   {
    "id": "A045",

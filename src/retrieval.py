@@ -20,7 +20,7 @@ def _tokenize(text: str) -> list[str]:
 
 
 class HybridRetriever:
-    def __init__(self, candidate_pool: int = 20, top_k: int | None = None):
+    def __init__(self, candidate_pool: int | None = None, top_k: int | None = None):
         """top_k defaults to config.RETRIEVAL_TOP_K, resolved HERE rather than in the signature
         of retrieve().
 
@@ -33,7 +33,9 @@ class HybridRetriever:
         could. Binding it to the instance closes that and gives callers something truthful to
         record: retriever.top_k is what retrieval actually used.
         """
-        self.candidate_pool = candidate_pool
+        self.candidate_pool = (
+            config.RETRIEVAL_CANDIDATE_POOL if candidate_pool is None else candidate_pool
+        )
         self.top_k = config.RETRIEVAL_TOP_K if top_k is None else top_k
 
         chunks_path = config.DATA_DIR / "kb" / "chunks.jsonl"

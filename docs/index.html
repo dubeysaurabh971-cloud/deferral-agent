@@ -116,6 +116,11 @@ details.row{
 details.row[data-err="false_resolution"]{border-left-color:var(--err)}
 details.row[data-err="false_escalation"]{border-left-color:var(--clarify)}
 details.row[data-err="misrouted"]{border-left-color:var(--escalate)}
+/* An adversarial ticket that expects RESOLVE and got deferred. Same cost as a false escalation
+   -- one unnecessary handoff -- but counted separately, because false escalation is a RATE over
+   the 100 answerable golden items and this is not one of them. Teal: the only palette token not
+   already carrying a stripe. */
+details.row[data-err="unwarranted_deferral"]{border-left-color:var(--accent)}
 details.row[data-ok="true"]{border-left-color:var(--resolve)}
 summary{
   cursor:pointer; list-style:none; padding:11px 14px;
@@ -220,7 +225,12 @@ footer p{margin:0 0 7px; font-size:13px; color:var(--muted); max-width:70ch}
     <p><strong>How to read this.</strong> The left stripe is the outcome: green correct, red a
       <em>false resolution</em> (answered when it should have deferred — the worst error), amber a
       <em>false escalation</em> (deferred an answerable ticket), violet a <em>misrouted</em> deferral
-      (right to defer, wrong lane).</p>
+      (right to defer, wrong lane), teal an <em>unwarranted deferral</em> (an adversarial ticket that
+      expected RESOLVE and was deferred anyway).</p>
+    <p><strong>On that last one:</strong> it costs the same as a false escalation — one unnecessary
+      handoff — but it is counted under its own name because <em>false escalation is a rate over the
+      100 answerable golden tickets</em>, and this is not one of them. Folding the two together is
+      what made this page report 15 false escalations where its own source report said 14.</p>
     <p>Golden tickets are answerable and all expect RESOLVE. Adversarial tickets are hand-written in four
       categories: <em>ambiguous</em> needs a question, <em>near&nbsp;miss</em> has the topic but not the fact,
       <em>out&nbsp;of&nbsp;kb</em> isn't covered at all, <em>injection</em> wraps a real request in an attack.</p>
@@ -253,6 +263,7 @@ footer p{margin:0 0 7px; font-size:13px; color:var(--muted); max-width:70ch}
     { k: 'False resolutions', v: E.false_resolution || 0, n: 'answered when it should have deferred', bad: true },
     { k: 'False escalations', v: E.false_escalation || 0, n: 'deferred an answerable ticket', bad: true },
     { k: 'Misrouted', v: E.misrouted || 0, n: 'right to defer, wrong lane', bad: true },
+    { k: 'Unwarranted deferrals', v: E.unwarranted_deferral || 0, n: 'adversarial, expected RESOLVE', bad: true },
     { k: 'Golden', v: pct(S.golden_accuracy), n: 'n=100, all answerable' },
     { k: 'Adversarial', v: pct(S.adversarial_accuracy), n: 'n=60, hand-written' },
     { k: 'Reviewer flips', v: S.reviewer_flips, n: 'CLARIFY overturned to RESOLVE' }
@@ -268,6 +279,7 @@ footer p{margin:0 0 7px; font-size:13px; color:var(--muted); max-width:70ch}
     { id: 'wrong', label: 'Wrong', fn: function (r) { return !r.correct; } },
     { id: 'fres', label: 'False resolutions', fn: function (r) { return r.error_type === 'false_resolution'; } },
     { id: 'fesc', label: 'False escalations', fn: function (r) { return r.error_type === 'false_escalation'; } },
+    { id: 'unwar', label: 'Unwarranted deferrals', fn: function (r) { return r.error_type === 'unwarranted_deferral'; } },
     { id: 'flip', label: 'Reviewer flipped', fn: function (r) { return r.reviewer_flipped; } },
     { id: 'fullclar', label: 'Asked despite full coverage', fn: function (r) { return r.final_decision === 'CLARIFY' && r.kb_coverage === 'full'; } },
     { id: 'inj', label: 'Injection', fn: function (r) { return r.category === 'injection'; } },

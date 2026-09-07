@@ -311,13 +311,15 @@ still a clarifying question would be worse than the deferral it replaced.
 
 - **Retrieval recall** — scored offline against each golden item's own `article_ids`, with no
   model calls. This is the measurement that reframed the project (finding 9) and it costs nothing;
-  it should have been the first thing run rather than the fourth.
+  it should have been the first thing run rather than the fourth. `src/eval/recall.py`, output
+  committed as `v5_recall.json`.
 
 Decision accuracy is a pure label comparison: one call per item, no judge needed.
 
 ```bash
 python -m src.eval.harness --resolver gated --no-judge --workers 8   # decision metrics, ~6 min
 python -m src.eval.sweep                                            # policy sweep, 0 API calls
+python -m src.eval.recall                                           # retrieval recall, 0 API calls
 ```
 
 Every number in this README traces to a committed report. The v5 ones:
@@ -330,6 +332,7 @@ Every number in this README traces to a committed report. The v5 ones:
 | `v5_topk10_nocite_run{1,2}.json` | `top_k=10` *before* the citation check — the false-resolution rise it bought back |
 | `v5_topk5_reviewer.json`, `v5_topk10_nocite_reviewer.json` | the reviewer measured at both settings (finding 10) |
 | `v5_v3reviewer_remeasured.json` | the old shipped build, re-run — the 44% → 37% discrepancy |
+| `v5_recall.json` | the retrieval recall sweep behind finding 9, and the deferred-vs-resolved split |
 | `gated_both_160_promptv4.json` | v4, kept as the record of finding 3 |
 
 All were run with `--no-judge`; every one carries its own `token_spend`, `workers`,
@@ -509,8 +512,16 @@ the reason finding 4's lesson — always measure both — is now enforced by mak
 lead with.** After finding 8 the false escalation rate sat at ~20% and would not move. Scoring
 retrieval against the golden set's own `article_ids` explained why: **recall@5 was 76%**. For 24
 of 100 answerable tickets the article containing the answer was never in the context. Worse, the
-gap tracked the failures precisely — recall was **54%** on the 13 tickets that deferred in every
-run, against **80%** on the ones that resolved.
+gap tracked the failures precisely — recall was **54%** (7 of 13) on the tickets that deferred in
+*every* run, against **79%** (69 of 87) on all the others.
+
+*A correction that came out of committing the sweep.* This section previously said 80%, computed
+over 83 items — the 13 always-deferred ones and 4 more that deferred in two runs of three were
+both excluded. The committed script uses the clean complement of the 13, which is 87 items and
+79%. The reproducible number is the one now stated. That is the third time a figure held only in
+prose turned out slightly off once an artefact existed to check it against, which is finding 11
+arriving from a different direction: **a number with no committed derivation is not yet a
+measurement.**
 
 That reframes the target completely. **A correctly-calibrated gate had to defer those 24 tickets**,
 and the only way to reach 15% by tuning the gate would have been to license answering from
@@ -525,9 +536,15 @@ constraint that was never in the prompt.
 | recall | 76% | 86% | **88%** | 90% |
 | context | 9.4k | 15k | 18k | 22k chars |
 
-Raising `candidate_pool` instead makes it *worse* (77% → 80% → 84% at `top_k=10` for pools of
-20/40/60): RRF rewards agreement between the two rankings, and a deeper pool adds rank-tail chunks
-that dilute it. So the pool stays at 20 and only `top_k` moves.
+Raising `candidate_pool` instead makes it *worse* — at `top_k=10`, pools of 20/40/60 give
+**88% → 87% → 84%**: RRF rewards agreement between the two rankings, and a deeper pool adds
+rank-tail chunks that dilute it. So the pool stays at 20 and only `top_k` moves.
+
+*A second correction from committing the sweep.* This sentence previously read "77% → 80% → 84%",
+which is the pool-60 **row** (`top_k` 5/8/10) rather than the `top_k=10` **column** — a
+transposition, sitting in both this file and `config.py`. The direction of the finding was right
+and the decision it justified was right; the figures were not. `v5_recall.json` now holds all
+twelve cells.
 
 `top_k=10` took false escalation to **12%**, and the cost was real and predictable — twice the
 context is twice the adjacent material to mistake for an answer, so false resolutions rose 9.3 →
@@ -701,7 +718,7 @@ genuine 0% stays distinguishable from a fabricated one.
   reached the top-k. An answer available in some *other* article counts as a miss, so 76%/88% are
   lower bounds on the retriever and the "24 tickets could not have been answered" claim in finding
   9 is correspondingly an upper bound. The direction of the finding is unaffected — the gap between
-  deferred (54%) and resolved (80%) items is what carries it — but the exact floor is soft.
+  deferred (54%) and resolved (79%) items is what carries it — but the exact floor is soft.
 
 ## Running it
 

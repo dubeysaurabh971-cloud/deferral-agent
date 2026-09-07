@@ -1,0 +1,117 @@
+{
+  "n_golden": 100,
+  "note": "Recall is measured against each golden item's own article_ids -- the articles its reference answer was written from. An answer available in some OTHER article counts as a miss, so these figures are lower bounds on the retriever, and the 'could not have been answered' claim they support is correspondingly an upper bound.",
+  "sweep": {
+    "pool20_topk5": {
+      "candidate_pool": 20,
+      "top_k": 5,
+      "recall": 0.76,
+      "n_hit": 76,
+      "n": 100
+    },
+    "pool20_topk8": {
+      "candidate_pool": 20,
+      "top_k": 8,
+      "recall": 0.86,
+      "n_hit": 86,
+      "n": 100
+    },
+    "pool20_topk10": {
+      "candidate_pool": 20,
+      "top_k": 10,
+      "recall": 0.88,
+      "n_hit": 88,
+      "n": 100
+    },
+    "pool20_topk12": {
+      "candidate_pool": 20,
+      "top_k": 12,
+      "recall": 0.9,
+      "n_hit": 90,
+      "n": 100
+    },
+    "pool40_topk5": {
+      "candidate_pool": 40,
+      "top_k": 5,
+      "recall": 0.77,
+      "n_hit": 77,
+      "n": 100
+    },
+    "pool40_topk8": {
+      "candidate_pool": 40,
+      "top_k": 8,
+      "recall": 0.84,
+      "n_hit": 84,
+      "n": 100
+    },
+    "pool40_topk10": {
+      "candidate_pool": 40,
+      "top_k": 10,
+      "recall": 0.87,
+      "n_hit": 87,
+      "n": 100
+    },
+    "pool40_topk12": {
+      "candidate_pool": 40,
+      "top_k": 12,
+      "recall": 0.88,
+      "n_hit": 88,
+      "n": 100
+    },
+    "pool60_topk5": {
+      "candidate_pool": 60,
+      "top_k": 5,
+      "recall": 0.77,
+      "n_hit": 77,
+      "n": 100
+    },
+    "pool60_topk8": {
+      "candidate_pool": 60,
+      "top_k": 8,
+      "recall": 0.8,
+      "n_hit": 80,
+      "n": 100
+    },
+    "pool60_topk10": {
+      "candidate_pool": 60,
+      "top_k": 10,
+      "recall": 0.84,
+      "n_hit": 84,
+      "n": 100
+    },
+    "pool60_topk12": {
+      "candidate_pool": 60,
+      "top_k": 12,
+      "recall": 0.86,
+      "n_hit": 86,
+      "n": 100
+    }
+  },
+  "split": {
+    "reports": [
+      "v5_topk5_run1.json",
+      "v5_topk5_run2.json",
+      "v5_topk5_run3.json"
+    ],
+    "top_k": 5,
+    "always_deferred_items": [
+      "G003",
+      "G006",
+      "G015",
+      "G021",
+      "G032",
+      "G033",
+      "G036",
+      "G054",
+      "G060",
+      "G067",
+      "G077",
+      "G082",
+      "G083"
+    ],
+    "n_always_deferred": 13,
+    "recall_on_always_deferred": 0.5384615384615384,
+    "recall_on_the_rest": 0.7931034482758621,
+    "interpretation": "Recall on the items every run refused, against recall on the rest. A uniform figure would mean retrieval is mediocre everywhere; a gap means it explains the failures."
+  }
+}

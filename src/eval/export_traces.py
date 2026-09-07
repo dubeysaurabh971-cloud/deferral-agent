@@ -13,6 +13,7 @@ import collections
 import json
 
 from src import config, gate
+from src.eval.compare import classify, taxonomy
 
 OUT = config.ROOT_DIR / "docs" / "data.js"
 
@@ -204,29 +205,46 @@ def main(allow_mixed: bool = False, from_report: str | None = None) -> None:
             "retrieved": [c["title"] for c in v3.get("retrieved_chunks", [])],
         })
 
-    def err(r):
-        """The error taxonomy the README is scored on."""
-        if r["correct"]:
-            return None
-        if r["final_decision"] == "RESOLVE":
-            return "false_resolution"
-        if r["expected"] == "RESOLVE":
-            return "false_escalation"
-        return "misrouted"
-
+    # Imported, not reimplemented. This module used to carry its own copy of the rules, and it
+    # disagreed with compare.taxonomy on adversarial items that expect RESOLVE: it called them
+    # false escalations, which over-reported the published page by one against the very report it
+    # was reconstructed from. One definition now, in compare.classify.
     for r in rows:
-        r["error_type"] = err(r)
+        r["error_type"] = classify(r["dataset"], r["expected"], r["final_decision"])
 
     by_category: dict[str, list[dict]] = {}
     for r in rows:
         if r["category"]:
             by_category.setdefault(r["category"], []).append(r)
 
+    # The summary is computed by taxonomy() over a report-shaped view of these very rows, so the
+    # header cannot disagree with the rows beneath it -- which is how the off-by-one stayed
+    # invisible: the page was internally consistent with its own wrong classifier.
+    as_report = {
+        "golden_results": [
+            {"item_id": r["id"], "decision": r["final_decision"], "expected_decision": r["expected"]}
+            for r in rows if r["dataset"] == "golden"
+        ],
+        "adversarial_results": [
+            {"item_id": r["id"], "decision": r["final_decision"], "expected_decision": r["expected"],
+             "category": r["category"]}
+            for r in rows if r["dataset"] == "adversarial"
+        ],
+    }
+    tax = taxonomy(as_report)
+
     summary = {
         "n": len(rows),
         "golden_accuracy": sum(r["correct"] for r in rows if r["dataset"] == "golden") / 100,
         "adversarial_accuracy": sum(r["correct"] for r in rows if r["dataset"] == "adversarial") / 60,
-        "errors": dict(collections.Counter(r["error_type"] for r in rows if r["error_type"])),
+        "errors": {
+            k: v for k, v in {
+                "false_resolution": tax["false_resolutions"],
+                "false_escalation": tax["false_escalations"],
+                "misrouted": tax["misrouted_deferrals"],
+                "unwarranted_deferral": tax["unwarranted_adversarial_deferrals"],
+            }.items() if v
+        },
         "by_category": {
             cat: {"n": len(g), "accuracy": sum(x["correct"] for x in g) / len(g)}
             for cat, g in sorted(by_category.items())

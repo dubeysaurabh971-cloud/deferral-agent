@@ -117,10 +117,23 @@ CHUNK_OVERLAP_TOKENS = 50
 #     ctx     9.4k  15k   18k   22k   chars
 #
 # 10 is where the curve flattens; 12 buys 2 more points for another 3.5k chars of context.
-# Raising candidate_pool instead makes it *worse* (77% -> 80% -> 84% at k=10 for pool 20/40/60):
-# RRF rewards agreement between the two rankings, and a deeper pool adds rank-tail chunks that
-# dilute it. So the pool stays at 20 and only top_k moves.
+#
+# Raising candidate_pool instead makes it *worse*. At k=10, pools of 20/40/60 give
+# 88% -> 87% -> 84%: RRF rewards agreement between the two rankings, and a deeper pool adds
+# rank-tail chunks that dilute it. So the pool stays at 20 and only top_k moves.
+#
+# Every figure here is reproducible with `python -m src.eval.recall` (no model calls) and is
+# committed as eval_results/v5_recall.json. It is worth saying why that matters: while this
+# comment was the only home for these numbers, it carried a transposition -- the old text quoted
+# "77% -> 80% -> 84%", which is the pool-60 ROW rather than the k=10 COLUMN. Committing the
+# script found it immediately.
 RETRIEVAL_TOP_K = 10
+
+# How deep each retriever's candidate list goes before RRF fuses them. Was a bare default in
+# HybridRetriever's signature and a literal in the recall sweep; named here so the two cannot
+# disagree about what "the default pool" means.
+RETRIEVAL_CANDIDATE_POOL = 20
+
 BM25_WEIGHT = 0.5
 DENSE_WEIGHT = 0.5
 RRF_K = 60
