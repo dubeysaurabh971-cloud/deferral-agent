@@ -8,17 +8,37 @@ explorer can load with no backend and no API key.
 
 Run: `python -m src.eval.export_traces`  (writes docs/data.js)
 """
+import argparse
 import collections
 import json
 
-from src import config
+from src import config, gate
 
 OUT = config.ROOT_DIR / "docs" / "data.js"
 
-# Which gated attempt in the append-only log belongs to which prompt revision. Golden was scored
-# by v3 then v4; adversarial by v1, (v2 on a 20-item subset), v3, then v4. So the v3 attempt is
-# always the one before last -- verified against both v3 reports, 160/160 decisions match.
-V3_INDEX = -2
+# How the shipped attempt is picked out of the append-only log.
+#
+# This used to be positional: V3_INDEX = -2, because at the time golden had been scored twice and
+# adversarial four times, so "the attempt before last" happened to be v3. That is only true until
+# someone runs the eval again, and v5 development ran it eight more times -- after which -2 pointed
+# at an arbitrary intermediate prompt and the explorer showed decisions no configuration ever
+# shipped, with no error. Traces now carry gate_version, so selection asks for what it wants.
+#
+# Pre-v5 traces have no gate_version and no reviewer decision baked in, so they still need the
+# offline replay overlaid to reconstruct the shipped v3+reviewer configuration. v5 records the
+# final decision directly, review included, so nothing has to be reconstructed.
+TARGET_GATE_VERSION = gate.GATE_VERSION
+LEGACY_INDEX = -2
+
+
+def current_config() -> dict:
+    """The configuration a trace must match to be shown as the shipped one."""
+    return {
+        "gate_version": gate.GATE_VERSION,
+        "review_clarifications": False,
+        "escalate_on_partial": True,
+        "retrieval_top_k": config.RETRIEVAL_TOP_K,
+    }
 
 
 def gated_by_ticket() -> dict[str, list[dict]]:
@@ -40,7 +60,27 @@ def load_jsonl(path):
         return [json.loads(line) for line in f]
 
 
-def main() -> None:
+def select_attempt(occurrences: list[dict], want: dict) -> tuple[dict | None, bool]:
+    """(attempt, is_current) -- the newest attempt matching `want`, else the legacy pick.
+
+    Matching on the whole configuration rather than the prompt version is what stops the
+    explorer mixing runs. Development leaves many attempts per ticket in the log, at different
+    top_k values and with the reviewer both on and off; picking "the newest v5 one" would show
+    whichever configuration happened to touch that ticket last, per ticket.
+
+    is_current says whether the returned attempt already carries its final, post-review
+    decision. When it does not, the caller must overlay the offline reviewer replay to
+    reconstruct what shipped.
+    """
+    matching = [r for r in occurrences if r.get("gate_config") == want]
+    if matching:
+        return matching[-1], True
+    if len(occurrences) >= abs(LEGACY_INDEX):
+        return occurrences[LEGACY_INDEX], False
+    return None, False
+
+
+def main(allow_mixed: bool = False) -> None:
     traces = gated_by_ticket()
     replay = json.load(open(config.ROOT_DIR / "eval_results" / "clarify_review_replay.json", encoding="utf-8"))
     flipped = {r["item_id"] for r in replay["rows"] if r["flipped_to_resolve"]}
@@ -56,22 +96,30 @@ def main() -> None:
             ("adversarial", it["item_id"], it["ticket_text"], it["expected_decision"], it["category"], None)
         )
 
+    want = current_config()
     rows, skipped = [], []
     for dataset, item_id, text, expected, category, reference in items:
         occ = traces.get(text, [])
-        if len(occ) < abs(V3_INDEX):
+        attempt, is_current = select_attempt(occ, want)
+        if attempt is None:
             skipped.append(item_id)
             continue
-        v3 = occ[V3_INDEX]
-        v4 = occ[-1] if len(occ) >= 1 else None
+        v3 = attempt
+        v4 = occ[-1] if occ else None
 
-        # The reviewer is governed: it may only flip on full coverage, and never on an injection.
-        governed = (
-            item_id in flipped
-            and v3["kb_coverage"] == "full"
-            and not v3.get("injection_attempt_detected")
-        )
-        final = "RESOLVE" if governed else v3["decision"]
+        if is_current:
+            # The recorded decision is already final: apply_policy and any clarification review
+            # ran before it was written. Reconstructing it here would only risk disagreeing.
+            final = v3["decision"]
+            governed = bool(v3.get("clarify_review") and "unnecessary" in v3["clarify_review"])
+        else:
+            # The reviewer is governed: it may only flip on full coverage, never on an injection.
+            governed = (
+                item_id in flipped
+                and v3["kb_coverage"] == "full"
+                and not v3.get("injection_attempt_detected")
+            )
+            final = "RESOLVE" if governed else v3["decision"]
 
         rows.append({
             "id": item_id,
@@ -84,8 +132,11 @@ def main() -> None:
             "correct": final == expected,
             "correct_before_review": v3["decision"] == expected,
             "reviewer_flipped": governed,
-            "reviewer_proposed_flip": item_id in flipped,
+            "reviewer_proposed_flip": (item_id in flipped) if not is_current else governed,
+            "from_target_config": is_current,
+            "gate_version": v3.get("gate_version", "pre-v5"),
             "kb_coverage": v3["kb_coverage"],
+            "supporting_excerpts": v3.get("supporting_excerpts"),
             "missing_information": v3.get("missing_information"),
             "requires_human_authority": v3.get("requires_human_authority"),
             "injection_detected": v3.get("injection_attempt_detected"),
@@ -126,7 +177,35 @@ def main() -> None:
         },
         "reviewer_flips": sum(r["reviewer_flipped"] for r in rows),
         "skipped": skipped,
+        "gate_config": want,
     }
+
+    # A page that mixes configurations is worse than no page: every row looks authoritative and
+    # the summary at the top is a number no configuration ever produced. This happened -- the
+    # config stamp was added mid-development, so 66 tickets had a stamped trace from an
+    # interrupted reviewer-on run while the other 94 fell back to a pre-v5 positional pick, and
+    # the export reported "0 skipped" as if all were well. Refuse instead, and say what to run.
+    # Uniformity is not enough: if every ticket falls back to the legacy positional pick the
+    # versions all agree and the page is still built from whichever prompt happened to be
+    # second-to-last per ticket. What must hold is that every row came from the config asked for.
+    versions = collections.Counter(
+        r["gate_version"] if r["from_target_config"] else f"{r['gate_version']} (legacy pick)"
+        for r in rows
+    )
+    off_target = [r["id"] for r in rows if not r["from_target_config"]]
+    if off_target and not allow_mixed:
+        raise SystemExit(
+            "\n".join([
+                f"refusing to write an explorer that does not match one configuration.",
+                f"{len(off_target)} of {len(rows)} tickets have no trace from the shipped config.",
+                f"Selected instead: {dict(versions)}",
+                f"Wanted every ticket scored by {want}.",
+                "Run one complete pass first:",
+                "  python -m src.eval.harness --resolver gated --no-judge --workers 8",
+                "then re-run this. Pass --allow-mixed to override, knowing the summary will",
+                "be an average over configurations rather than a measurement of one.",
+            ])
+        )
 
     # Emitted as a JS global rather than JSON so the page also works opened straight off disk --
     # fetch() is blocked on file:// URLs, a <script src> is not. GitHub Pages serves it either way.
@@ -143,4 +222,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="export scored decisions to docs/data.js")
+    parser.add_argument(
+        "--allow-mixed", action="store_true",
+        help="write the page even when the tickets were scored by different configurations",
+    )
+    main(parser.parse_args().allow_mixed)
