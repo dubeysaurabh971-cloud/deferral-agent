@@ -13,6 +13,7 @@ DECISIONS = ("RESOLVE", "CLARIFY", "ESCALATE")
 def attempt(**overrides) -> ResolutionAttempt:
     base = {
         "reasoning": "test",
+        "supporting_excerpts": [1],
         "kb_coverage": "full",
         "missing_information": None,
         "requires_human_authority": False,
@@ -102,3 +103,60 @@ def test_schema_rejects_out_of_taxonomy_values():
         attempt(decision="MAYBE")
     with pytest.raises(Exception):
         attempt(kb_coverage="mostly")
+
+
+# --- the citation check: a claim of coverage has to point at something -------------
+
+def test_full_coverage_must_cite_a_supporting_excerpt():
+    """An unearned 'full' is the one error nothing downstream can catch, because every other
+    rule trusts the coverage label. Claiming full coverage while pointing at no excerpt is a
+    claim with no evidence, and it is refused."""
+    decision, override = apply_policy(attempt(supporting_excerpts=[]))
+    assert decision == "ESCALATE"
+    assert "no supporting excerpt" in override
+
+
+def test_one_cited_excerpt_is_enough():
+    assert apply_policy(attempt(supporting_excerpts=[3]))[0] == "RESOLVE"
+    assert apply_policy(attempt(supporting_excerpts=[1, 2, 5]))[0] == "RESOLVE"
+
+
+def test_citation_check_does_not_apply_to_deferrals():
+    """It can only ever block a RESOLVE -- a model that already deferred is left alone, so the
+    rule cannot turn a CLARIFY into an ESCALATE."""
+    for model_decision in ("CLARIFY", "ESCALATE"):
+        decision, override = apply_policy(
+            attempt(decision=model_decision, supporting_excerpts=[])
+        )
+        assert decision == model_decision
+        assert override is None
+
+
+def test_citation_check_is_ordered_after_the_coverage_rules():
+    """Coverage and authority are the more informative reasons; the override string should name
+    them rather than the citation when both apply, so a trace says why it really deferred."""
+    _, override = apply_policy(attempt(kb_coverage="none", supporting_excerpts=[]))
+    assert "none" in override
+    _, override = apply_policy(attempt(requires_human_authority=True, supporting_excerpts=[]))
+    assert "requires_human_authority" in override
+
+
+def test_one_directional_property_survives_the_new_rule():
+    """The whole input space, including the citation field: nothing can turn a deferral into a
+    RESOLVE, which is what makes the policy layer safe to bolt on."""
+    for coverage, authority, cited, model_decision, knob in itertools.product(
+        COVERAGE, (True, False), ([], [1]), DECISIONS, (True, False)
+    ):
+        final, _ = apply_policy(
+            attempt(
+                kb_coverage=coverage,
+                requires_human_authority=authority,
+                supporting_excerpts=cited,
+                decision=model_decision,
+            ),
+            escalate_on_partial=knob,
+        )
+        if model_decision != "RESOLVE":
+            assert final == model_decision
+        else:
+            assert final in {"RESOLVE", "ESCALATE"}

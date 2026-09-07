@@ -66,6 +66,9 @@ def flip_permitted(trace: dict) -> bool:
         return False
     probe = gate.ResolutionAttempt(
         reasoning=trace.get("reasoning") or "",
+        # See sweep.attempt_from_trace: pre-v5 traces predate supporting_excerpts, and an empty
+        # list would refuse every flip for a reason the cached run never had a chance to fail.
+        supporting_excerpts=trace.get("supporting_excerpts") or [0],
         kb_coverage=trace["kb_coverage"],
         missing_information=trace.get("missing_information"),
         requires_human_authority=bool(trace.get("requires_human_authority")),

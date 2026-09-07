@@ -1,14 +1,26 @@
-"""Second-stage review of CLARIFY decisions -- the mechanism fix for over-deferral.
+"""Second-stage review of CLARIFY decisions. NOT ENABLED BY DEFAULT since v5 -- see below.
 
-Finding 3 established that over-clarification does not respond to being told about itself: a
-stricter TEST A inside the gate prompt produced *more* clarification, not less (golden 49% ->
-42%). The diagnosis was that TEST A competes with six other paragraphs in one prompt, and a
-model asked to weigh coverage, authority, specificity and injection at once has no reason to
-weigh any one of them the way you intended.
+Why it was built. Finding 3 established that over-clarification did not respond to being told
+about itself: a stricter TEST A inside the v3 gate prompt produced *more* clarification, not
+less (golden 49% -> 42%). The diagnosis was that TEST A competed with six other paragraphs in
+one prompt, and a model asked to weigh coverage, authority, specificity and injection at once
+has no reason to weigh any one of them the way you intended. So this became a separate call
+with exactly one job: given the excerpts, the ticket, and the question the gate wants to ask,
+decide whether that question is *necessary*. Nothing else on the table -- no coverage label,
+no escalation, no injection handling. It took false escalations 53 -> 46 for one extra false
+resolution, and was what the project shipped.
 
-So this is a separate call with exactly one job: given the excerpts, the ticket, and the
-question the gate wants to ask, decide whether that question is *necessary*. Nothing else is
-on the table -- no coverage label, no escalation, no injection handling.
+Why it is now off. v5 fixed the over-clarification in the gate itself, by changing what the
+three fields *mean* rather than how firmly the model is urged to weigh them (src/gate.py).
+Golden CLARIFY fell from 25 to 1-6 -- and a compensator whose input has almost vanished does
+not go neutral, it inverts: nearly every clarification the reviewer now sees is a genuine one,
+so its remaining effect is to overturn some of those. Measured, it raises false resolutions
+9.3 -> 13.0 at top_k=5 and 12.5 -> 15.0 at top_k=10. The cost curves are below.
+
+The mechanism itself is not disowned. Finding 4's argument -- give a contested judgement its
+own call, with nothing to trade against -- is sound, and this file is the evidence for it. What
+changed is that the judgement it was isolating no longer needs isolating. Kept, tested, and one
+constructor argument away, because a different gate could need it again.
 
 Two properties make it safe to bolt on, mirroring apply_policy:
 
@@ -31,25 +43,35 @@ the question the agent wants to ask.
 Your only job is to decide whether that question is NECESSARY. Do not judge anything else --
 not whether a human should handle it, not whether the excerpts are good, not tone.
 
-The question is NECESSARY only if the excerpts contain two or more materially different
-procedures or answers, and which one applies genuinely depends on the customer's reply. If so,
-name the competing procedures explicitly in your reasoning. Cancelling a site plan, an app and
-a domain renewal really are three different procedures -- that is a necessary question.
+A question is NECESSARY only when it asks for a fact ONLY THE CUSTOMER HOLDS, and without
+which no useful answer exists. That means: which site, page, product, order, domain, plan,
+subscription or team member of theirs is involved; an error message or status they can read
+off their screen; or which outcome they want, when the ticket names none at all. A ticket that
+is one bare sentence of symptom or goal, naming no instance of anything, needs the question.
 
-The question is NOT NECESSARY when the excerpts contain a single procedure that answers the
-ticket as asked. This is the common case and the one to watch for:
+A question is NOT NECESSARY -- and this is the common case, the one you are here to catch --
+when it asks the customer to do the agent's own work:
 
-  - A generally-phrased question usually has one documented answer. "How do I add a custom
-    domain" does not need to know which site.
-  - Do not require a site name, account id, order number, plan tier, browser or operating
-    system that the documented procedure never actually references.
-  - If you would answer the ticket the same way regardless of what the customer replied, the
-    question is not necessary.
-  - Being able to imagine a follow-up question is not the same as needing to ask one. Asking
-    when you did not have to costs the customer a round trip for nothing.
+  - CHOOSING BETWEEN OUR PROCEDURES. If the excerpts document two or more ways to do what the
+    customer plainly wants, that is not a reason to ask which one they want; it is material
+    for an answer that gives both, briefly, labelled. The customer wrote in because they do
+    not know our procedures. Do not count competing procedures as evidence the question is
+    needed -- they are usually evidence it is not.
+  - WHICH INTERFACE THEY ARE IN. Which editor (Editor, Editor X, Studio, ADI), desktop or
+    mobile app, dashboard or editor. Answer for the main path and note the variant in a line.
+  - RUNNING OUR DIAGNOSTICS FOR US. When the customer reports a symptom and the excerpts
+    document what to check, sending that checklist IS the answer. Asking them to walk it and
+    report back costs a round trip and arrives at the same place.
+  - DETAIL THE PROCEDURE NEVER USES. A site name, account id, order number, plan tier,
+    browser or OS the documented steps never reference. If you would answer the ticket the
+    same way whatever they replied, the question is not necessary.
+
+Being able to imagine a follow-up question is not the same as needing to ask one.
 
 If the question is NOT necessary, write the answer to the ticket yourself, using ONLY the
-excerpts and citing them by their [n] marker."""
+excerpts and citing them by their [n] marker. Where a detail would genuinely change the
+answer but you can cover both branches in a few lines, cover both -- that is an answer, not a
+question."""
 
 
 class ClarificationReview(BaseModel):
@@ -57,16 +79,18 @@ class ClarificationReview(BaseModel):
     and the scorers use, for the same reason."""
 
     reasoning: str = Field(
-        description="Name the competing procedures in the excerpts if there are any. If there is "
-        "only one procedure that answers the ticket as asked, say so."
+        description="State what the question is actually asking the customer for, and whether that "
+        "is a fact only they hold or a choice between procedures the excerpts already contain."
     )
     competing_procedures: list[str] = Field(
         default_factory=list,
         description="The materially different procedures the excerpts offer, if more than one. "
-        "Empty when a single procedure answers the ticket.",
+        "Recorded for audit: these are usually material for an answer that presents both, NOT "
+        "grounds for asking the customer to choose between them.",
     )
     question_is_necessary: bool = Field(
-        description="True only if the customer's reply would actually change which answer they get."
+        description="True only if the question asks for a fact that only the customer holds and "
+        "without which no useful answer exists."
     )
     answer: str | None = Field(
         default=None,
@@ -90,27 +114,45 @@ def review_clarification(
 
 # Whether the reviewer is worth running is not a fact about the reviewer -- it depends on what a
 # false resolution costs relative to an unnecessary handoff. Writing C for that ratio, total error
-# cost on this 160-item eval set is linear in C:
+# cost on this 160-item eval set is linear in C.
 #
-#     gate alone             4C + 64
-#     reviewer, governed     5C + 57      <- the shipped configuration
-#     reviewer, ungoverned   9C + 50      <- more flips, no policy re-check; not offered
+# Under the v3 gate, where these numbers were first taken, the reviewer won for C < 7:
 #
-# The reviewer trades one extra false resolution for seven fewer false escalations, so it wins
-# while C < 7 and loses above it. It also only beats the ungoverned variant above C = 1.75, which
-# is why the ungoverned one is not exposed: below 1.75 you would want the other one anyway.
+#     v3 gate alone           4C + 64
+#     v3 + reviewer           5C + 57      <- what this project used to ship
 #
-# 7.0 is measured on this eval set, not a general constant, and both bounds inherit the wide
-# confidence intervals of a single 160-item run.
-REVIEW_BREAK_EVEN_C = 7.0
+# Under v5 it loses, and by a wide margin. Measured at both retrieval settings (means over the
+# runs in eval_results/, gate-only vs the same gate with the reviewer on):
+#
+#     v5 gate, top_k=5         9.3C + 25.0     reviewer on:  13.0C + 25.0
+#     v5 gate, top_k=10       12.5C + 17.0     reviewer on:  15.0C + 13.0
+#
+# At top_k=5 the reviewer is strictly dominated -- 3.7 more false resolutions and no fewer
+# deferral errors. At top_k=10 it buys 4 fewer deferral errors for 2.5 more false resolutions,
+# which is a win only below C = 1.6; the gate itself only beats the ungated baseline above
+# C = 1.19, so the window where the reviewer helps is a slice barely wider than the noise.
+#
+# The cause is not that the reviewer got worse. It is that the reviewer was a *compensator* for
+# the gate's over-clarification: it existed to catch clarifications that should have been
+# answers, and v5 stopped producing them. Golden CLARIFY fell from 25 to 1-6, so almost every
+# clarification the reviewer now sees is a genuine one, and its only remaining effect is to
+# overturn some of those. Fixing a defect at its source does not leave the compensator neutral;
+# it inverts it.
+#
+# Both figures are measured on this eval set, not general constants, and the v5 pair inherits the
+# +-3 point run-to-run spread documented in the README.
+REVIEW_BREAK_EVEN_C = 1.6
+
+# The v3-era constant, kept so the README's finding 4 stays checkable against the code.
+REVIEW_BREAK_EVEN_C_V3 = 7.0
 
 
 def review_is_worthwhile(cost_ratio: float) -> bool:
     """Does the clarification reviewer lower expected error cost at this cost ratio?
 
-    cost_ratio is C = cost(false resolution) / cost(unnecessary handoff). A support org that
-    considers a confidently wrong answer ten times worse than a needless handoff should run
-    without the reviewer; one that considers it three times worse should run with it.
+    cost_ratio is C = cost(false resolution) / cost(unnecessary handoff). Under the v5 gate the
+    answer is almost always no: see the cost curves above. It stays configurable because the
+    mechanism is sound and a different gate could need it again, but it is no longer the default.
     """
     return cost_ratio < REVIEW_BREAK_EVEN_C
 

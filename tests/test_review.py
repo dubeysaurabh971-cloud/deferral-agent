@@ -14,6 +14,7 @@ from src.resolver import GatedResolver
 def attempt(**kw):
     base = dict(
         reasoning="r",
+        supporting_excerpts=[1],
         kb_coverage="full",
         missing_information="which site",
         requires_human_authority=False,
@@ -134,12 +135,27 @@ def test_review_can_be_disabled():
 # --- configuration is an economics question, not a model property ------------------
 
 def test_break_even_matches_the_measured_cost_curves():
-    """gate alone = 4C+64, governed reviewer = 5C+57; equal at C=7."""
+    """v5 gate at top_k=10 = 12.5C+17, same gate with the reviewer = 15C+13; equal at C=1.6.
+
+    Means over the runs in eval_results/. The v3-era pair is kept too, because the README's
+    finding 4 is stated in those numbers and should stay checkable against the code."""
     C = review.REVIEW_BREAK_EVEN_C
-    assert 4 * C + 64 == pytest.approx(5 * C + 57)
+    assert 12.5 * C + 17.0 == pytest.approx(15.0 * C + 13.0)
+
+    C_v3 = review.REVIEW_BREAK_EVEN_C_V3
+    assert 4 * C_v3 + 64 == pytest.approx(5 * C_v3 + 57)
 
 
-@pytest.mark.parametrize("c,expected", [(1.0, True), (3.0, True), (6.9, True), (7.1, False), (10.0, False)])
+def test_the_reviewer_lost_its_case_between_v3_and_v5():
+    """Not a tautology: it pins the direction of the finding. The reviewer went from winning
+    below C=7 to winning only below C=1.6, because v5 removed the over-clarification it existed
+    to compensate for. If someone re-tunes it upward, this should be a deliberate act."""
+    assert review.REVIEW_BREAK_EVEN_C < review.REVIEW_BREAK_EVEN_C_V3
+
+
+@pytest.mark.parametrize(
+    "c,expected", [(1.0, True), (1.5, True), (1.7, False), (3.0, False), (10.0, False)]
+)
 def test_review_is_worthwhile(c, expected):
     assert review.review_is_worthwhile(c) is expected
 
@@ -147,9 +163,10 @@ def test_review_is_worthwhile(c, expected):
 @pytest.mark.parametrize(
     "kwargs,want",
     [
-        ({"cost_ratio": 3.0}, True),                              # cheap bad answers -> review
-        ({"cost_ratio": 10.0}, False),                            # expensive bad answers -> don't
-        ({}, True),                                               # default assumes C < 7
+        ({"cost_ratio": 1.2}, True),                              # very cheap bad answers -> review
+        ({"cost_ratio": 3.0}, False),                             # anything dearer -> don't
+        ({"cost_ratio": 10.0}, False),
+        ({}, False),                          # v5 default: reviewer off, see src/review.py
         ({"cost_ratio": 10.0, "review_clarifications": True}, True),   # explicit flag wins
         ({"cost_ratio": 1.0, "review_clarifications": False}, False),  # explicit flag wins
     ],

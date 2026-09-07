@@ -39,8 +39,20 @@ def load_gated_traces() -> dict[str, dict]:
 
 
 def attempt_from_trace(rec: dict) -> gate.ResolutionAttempt:
+    """Rebuild the model's attempt from a cached trace.
+
+    supporting_excerpts arrived in v5 and traces written before it do not carry it. An empty
+    list means "claimed coverage it could not point at", which apply_policy refuses -- so
+    defaulting to empty here would turn every replayed RESOLVE into an ESCALATE and quietly
+    invalidate the one thing this sweep measures. A pre-v5 trace simply has nothing to say
+    about that rule, so it replays as if the citation check passed and only the knob varies.
+    """
+    cited = rec.get("supporting_excerpts")
+    if cited is None:
+        cited = [0]  # pre-v5 trace: rule not replayable, do not let it decide the outcome
     return gate.ResolutionAttempt(
         reasoning=rec.get("reasoning", ""),
+        supporting_excerpts=cited,
         kb_coverage=rec["kb_coverage"],
         missing_information=rec.get("missing_information"),
         requires_human_authority=bool(rec.get("requires_human_authority")),

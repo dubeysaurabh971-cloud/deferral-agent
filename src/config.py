@@ -105,7 +105,22 @@ KB_COLLECTION_NAME = "wix_kb"
 CHUNK_SIZE_TOKENS = 500
 CHUNK_OVERLAP_TOKENS = 50
 
-RETRIEVAL_TOP_K = 5
+# top_k=5 put a hard floor under false escalation that no amount of gate tuning could lift.
+# Measured against the golden set's own reference article_ids, recall@5 was 76%: for 24 of 100
+# answerable tickets the article containing the answer was never in the context, so a
+# correctly-calibrated gate had to defer them, and the only way to "fix" that in the gate would
+# have been to license answering from material that does not contain the answer -- the exact
+# failure this project exists to prevent. Recall by top_k, over all 100 golden items:
+#
+#     top_k      5     8    10    12
+#     recall   76%   86%   88%   90%
+#     ctx     9.4k  15k   18k   22k   chars
+#
+# 10 is where the curve flattens; 12 buys 2 more points for another 3.5k chars of context.
+# Raising candidate_pool instead makes it *worse* (77% -> 80% -> 84% at k=10 for pool 20/40/60):
+# RRF rewards agreement between the two rankings, and a deeper pool adds rank-tail chunks that
+# dilute it. So the pool stays at 20 and only top_k moves.
+RETRIEVAL_TOP_K = 10
 BM25_WEIGHT = 0.5
 DENSE_WEIGHT = 0.5
 RRF_K = 60

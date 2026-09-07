@@ -76,19 +76,21 @@ class GatedResolver:
         """cost_ratio is C = cost(false resolution) / cost(unnecessary handoff).
 
         Whether to run the clarification reviewer is an operator's economics question, not a
-        property of the model: it trades one extra false resolution for seven fewer false
-        escalations, which is a win below C = 7 and a loss above it. Supply cost_ratio and the
-        right configuration is selected; supply review_clarifications to force it either way.
+        property of the model. Supply cost_ratio and the right configuration is selected; supply
+        review_clarifications to force it either way.
 
-        The default with neither supplied is reviewer-on, which assumes C < 7. An organisation
-        that treats a confidently wrong answer as ten times worse than a needless handoff should
-        pass cost_ratio=10 (or review_clarifications=False) and run the gate alone.
+        The default with neither supplied is reviewer-OFF, which reverses the v3-era default.
+        The reviewer was a compensator for the gate's over-clarification, and v5 removed the
+        over-clarification: golden CLARIFY fell from 25 to 1-6, so the reviewer now mostly
+        overturns genuine clarifications. It measured as strictly dominated at top_k=5 and as a
+        win only below C = 1.6 at top_k=10 -- against a gate that itself only beats the ungated
+        baseline above C = 1.19. See the cost curves in src/review.py.
         """
         self.retriever = HybridRetriever()
         self.escalate_on_partial = escalate_on_partial
         if review_clarifications is None:
             review_clarifications = (
-                review.review_is_worthwhile(cost_ratio) if cost_ratio is not None else True
+                review.review_is_worthwhile(cost_ratio) if cost_ratio is not None else False
             )
         self.review_clarifications = review_clarifications
         self.cost_ratio = cost_ratio
@@ -153,6 +155,7 @@ class GatedResolver:
             "model_decision": attempt.decision,
             "policy_override": override_reason,
             "kb_coverage": attempt.kb_coverage,
+            "supporting_excerpts": attempt.supporting_excerpts,
             "missing_information": attempt.missing_information,
             "requires_human_authority": attempt.requires_human_authority,
             "injection_attempt_detected": attempt.injection_attempt_detected,
@@ -162,6 +165,16 @@ class GatedResolver:
             "clarify_review": review_note,
             "model": config.active_model(),
             "resolver": "gated",
+            # Full configuration, not just the prompt version: the same gate at a different
+            # top_k or with the reviewer flipped produces different decisions, and a trace that
+            # cannot say which one it came from cannot be selected out of an append-only log.
+            "gate_config": {
+                "gate_version": gate.GATE_VERSION,
+                "review_clarifications": self.review_clarifications,
+                "escalate_on_partial": self.escalate_on_partial,
+                "retrieval_top_k": config.RETRIEVAL_TOP_K,
+            },
+            "gate_version": gate.GATE_VERSION,
             "usage": {
                 "input_tokens": usage.input_tokens,
                 "output_tokens": usage.output_tokens,
