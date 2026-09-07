@@ -8,9 +8,9 @@ measurement of what that costs.
 
 **[Browse all 160 decisions →](https://dubeysaurabh971-cloud.github.io/deferral-agent/)** — every
 ticket the gate answered, asked about, or handed off, with its reasoning and coverage call. No API
-key, no backend; generated from the trace log. **Currently showing the superseded v3 run**, which
-is what the reasoning in finding 8 was diagnosed from; regenerating it for v5 needs one clean
-scoring pass and the page says so at the top.
+key, no backend; generated from the trace log. Shows **one run of three** — the most recent, which
+is also the weakest, so it is not a favourable pick; the page states its own figures against the
+three-run means.
 
 > **What this proves.** A single structured self-assessment call can near-eliminate confidently
 > wrong answers in support RAG — false resolutions **58 → 12** — and this trade-off has to be
@@ -572,12 +572,13 @@ iteration, and would have quietly falsified the published artefact.
   end-to-end decision runs, so the crossover at C ≈ 3.5 is drawn through two points. The API
   budget ran out before 8 could be measured, and 8 is where I would look first: it has 86% recall
   for 3k fewer characters of context than 10.
-- **The results explorer still shows the v3 configuration.** `docs/data.js` is committed from the
-  old build, and regenerating it needs one clean 160-item pass under a single configuration, which
-  the remaining API budget did not cover. The export now refuses to write a mixed-configuration
-  page rather than silently producing one (finding 11), so the published page is stale but
-  internally consistent. `python -m src.eval.harness --resolver gated --no-judge --workers 8`
-  followed by `python -m src.eval.export_traces` regenerates it.
+- **The results explorer shows a single run, not the reported means.** `docs/data.js` is one
+  complete pass; the README's headline figures are means over three. The published run is the most
+  recent, which is also the weakest of the three on every axis — a deliberate rule rather than a
+  choice made after seeing the numbers — and the page states both its own figures and the means.
+  It was reconstructed from the committed report by matching each item's recorded labels against
+  the trace log (`--from-report`), because the runs predate the `gate_config` stamp the exporter
+  selects on; the join is verified item by item and needs no API calls.
 - **The v3 reviewer's numbers came from a replay, not a fresh end-to-end run.** The 72 reviewer
   calls were real, against the live model, but they were made over the base gate's *cached*
   decisions rather than re-running both stages together. Because the reviewer only reads the

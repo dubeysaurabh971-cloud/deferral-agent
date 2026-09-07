@@ -60,6 +60,32 @@ def load_jsonl(path):
         return [json.loads(line) for line in f]
 
 
+# Fields a trace and a report row must agree on for the trace to be that row's. Decision alone
+# is too loose -- three runs of the same config agree on most items, and picking the wrong run's
+# trace would attach the wrong reasoning text to the right decision.
+MATCH_FIELDS = ("decision", "kb_coverage", "model_decision", "requires_human_authority")
+
+
+def select_by_report(occurrences: list[dict], row: dict) -> dict | None:
+    """The most recent trace whose labels all equal this report row's.
+
+    Why this exists. Traces only started carrying gate_config partway through v5 development,
+    which means the runs the shipped figures come from predate the stamp the exporter selects on
+    -- so the decisions were on disk and unusable, and the apparent fix was to pay to score all
+    160 tickets again. A committed report already records what each item decided and under which
+    configuration; the trace log holds the reasoning. Joining the two recovers the run exactly,
+    for nothing, and is checkable: every item must match or the caller refuses.
+
+    This is now the more robust selector of the two, because it depends on committed data rather
+    than on a field having existed at the time.
+    """
+    matches = [
+        t for t in occurrences
+        if all(t.get(f) == row.get(f) for f in MATCH_FIELDS)
+    ]
+    return matches[-1] if matches else None
+
+
 def select_attempt(occurrences: list[dict], want: dict) -> tuple[dict | None, bool]:
     """(attempt, is_current) -- the newest attempt matching `want`, else the legacy pick.
 
@@ -80,8 +106,16 @@ def select_attempt(occurrences: list[dict], want: dict) -> tuple[dict | None, bo
     return None, False
 
 
-def main(allow_mixed: bool = False) -> None:
+def main(allow_mixed: bool = False, from_report: str | None = None) -> None:
     traces = gated_by_ticket()
+    report = None
+    if from_report:
+        report = json.load(open(config.ROOT_DIR / "eval_results" / from_report, encoding="utf-8"))
+        if report.get("n_failed"):
+            raise SystemExit(
+                f"{from_report} lost {report['n_failed']} item(s); it does not describe a complete "
+                "run and must not be published as one."
+            )
     replay = json.load(open(config.ROOT_DIR / "eval_results" / "clarify_review_replay.json", encoding="utf-8"))
     flipped = {r["item_id"] for r in replay["rows"] if r["flipped_to_resolve"]}
 
@@ -97,10 +131,29 @@ def main(allow_mixed: bool = False) -> None:
         )
 
     want = current_config()
+    report_rows = {}
+    if report is not None:
+        report_rows = {
+            r["item_id"]: r
+            for r in (report.get("golden_results") or []) + (report.get("adversarial_results") or [])
+        }
+        want = {
+            "gate_version": gate.GATE_VERSION,
+            "review_clarifications": report.get("review_clarifications"),
+            "escalate_on_partial": True,
+            "retrieval_top_k": config.RETRIEVAL_TOP_K,
+            "reconstructed_from": from_report,
+        }
+
     rows, skipped = [], []
     for dataset, item_id, text, expected, category, reference in items:
         occ = traces.get(text, [])
-        attempt, is_current = select_attempt(occ, want)
+        if report is not None:
+            row = report_rows.get(item_id)
+            attempt = select_by_report(occ, row) if row else None
+            is_current = attempt is not None
+        else:
+            attempt, is_current = select_attempt(occ, want)
         if attempt is None:
             skipped.append(item_id)
             continue
@@ -135,6 +188,9 @@ def main(allow_mixed: bool = False) -> None:
             "reviewer_proposed_flip": (item_id in flipped) if not is_current else governed,
             "from_target_config": is_current,
             "gate_version": v3.get("gate_version", "pre-v5"),
+            # The model's own pre-policy decision, so a policy override is visible as the
+            # difference between this and final_decision rather than only as a warning string.
+            "model_decision": v3.get("model_decision"),
             "kb_coverage": v3["kb_coverage"],
             "supporting_excerpts": v3.get("supporting_excerpts"),
             "missing_information": v3.get("missing_information"),
@@ -227,4 +283,11 @@ if __name__ == "__main__":
         "--allow-mixed", action="store_true",
         help="write the page even when the tickets were scored by different configurations",
     )
-    main(parser.parse_args().allow_mixed)
+    parser.add_argument(
+        "--from-report", default=None, metavar="NAME",
+        help="reconstruct the run from a committed report under eval_results/, by matching each "
+             "item's recorded labels against the trace log. Use this for runs made before traces "
+             "carried gate_config -- it needs no API calls and is verified item by item.",
+    )
+    args = parser.parse_args()
+    main(args.allow_mixed, args.from_report)

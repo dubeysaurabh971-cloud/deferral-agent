@@ -77,10 +77,11 @@ h1{
   padding:11px 14px; border-radius:0 6px 6px 0; max-width:70ch;
 }
 .verdict p{margin:0; font-size:14px; color:var(--ink)}
-/* A page whose data is superseded should not look like a current result. Amber, not red: the
-   rows are stale, not wrong -- they are exactly what the v3 run produced. Reuses --clarify
-   rather than new literals, so it follows the light/dark palette like everything else. */
-.verdict.stale{border-left-color:var(--clarify); background:var(--clarify-soft)}
+/* The masthead callout is a caveat, not a verdict of failure, so it should not be alarm-red.
+   Amber: these rows are one complete run rather than the three-run means the README reports,
+   and the difference is a real caveat but not an error. Reuses --clarify rather than new
+   literals, so it follows the light/dark palette like everything else. */
+.verdict.caveat{border-left-color:var(--clarify); background:var(--clarify-soft)}
 .repo{display:flex; gap:16px; flex-wrap:wrap; font-size:13px; font-family:var(--mono)}
 
 /* ---- metrics ---- */
@@ -177,20 +178,24 @@ footer p{margin:0 0 7px; font-size:13px; color:var(--muted); max-width:70ch}
       All <strong>160 scored tickets</strong> from a support-RAG agent whose job is deciding whether to
       <strong>answer</strong>, <strong>ask a question</strong>, or <strong>hand off to a human</strong>.
       The baseline it replaces answered all 160 — including 58 it had no business answering.
-      Open any row for the model's reasoning, its coverage call, and what it actually said.
+      Open any row for the model's reasoning, which excerpts it says state the answer, and what
+      it actually sent.
     </p>
-    <div class="verdict stale">
-      <p><strong>The rows below are the superseded v3 run.</strong> They are kept because the
-      reasoning in them is what diagnosed the defect — but the numbers on this page are no longer
-      the project's result. v3 refused <strong>44%</strong> of answerable tickets, well above the
-      15% bar its README sets, and this page used to conclude the system was unshippable.</p>
+    <div class="verdict caveat">
+      <p><strong>This is one run of three, not an average.</strong> The rows below are the v5
+      gate's <em>most recent</em> complete pass — which is also the weakest of the three, so
+      nothing here is a favourable selection. Its figures: 86% golden accuracy, 14% false
+      escalation, 14 false resolutions. The three-run means the README reports are
+      <strong>88% / 12% / 11.7</strong>, and the spread between identical runs is about
+      ±3 points, which is itself one of the findings.</p>
       <p style="margin-top:7px">
-      <strong>v5 clears that bar: false escalation 37% → 12%</strong>, with false resolutions no
-      worse and adversarial accuracy up 6 points. Over-deferral turned out to be three defects,
-      and the largest was retrieval, not caution — recall@5 was 76%, so 24 of 100 answerable
-      tickets never had their answer in context and no calibration could have saved them.
-      <a href="https://github.com/dubeysaurabh971-cloud/deferral-agent#findings">Findings 8–10</a>
-      have the details. Regenerating these rows needs one clean scoring pass, which is pending.</p>
+      <strong>v5 took false escalation from 37% to 12%</strong>, clearing the 15% bar this page
+      previously said the project failed — with false resolutions no worse and adversarial
+      accuracy up 6 points. Over-deferral was three defects, and the largest was retrieval, not
+      caution: recall@5 was 76%, so 24 of 100 answerable tickets never had their answer in
+      context and no amount of calibration could have saved them.
+      <a href="https://github.com/dubeysaurabh971-cloud/deferral-agent#findings">Findings 8–11</a>
+      have the details.</p>
     </div>
     <div class="repo">
       <a href="https://github.com/dubeysaurabh971-cloud/deferral-agent">github.com/dubeysaurabh971-cloud/deferral-agent</a>
