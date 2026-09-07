@@ -19,9 +19,9 @@ three-run means.
 >
 > **What I would ship.** The v5 configuration, which clears the bar this README used to fail.
 > False escalation is **12%** (range 9–14% over three runs) against a stated bar of ~15%, with
-> false resolutions no worse than the configuration it replaces and adversarial accuracy up 6
-> points. It beats the previous build on *both* error types at once rather than trading between
-> them.
+> false resolutions no worse than the configuration it replaces — inside the run-to-run spread,
+> not better — 28 fewer deferral errors, and adversarial accuracy up 6 points. The win is on the
+> deferral side and does not require the two builds to differ on false resolutions at all.
 >
 > **How it got there — the part worth reading.** Two earlier attempts had failed: a prompt fix
 > aimed straight at over-deferral made it *worse* (finding 3), and a second-stage reviewer moved
@@ -38,9 +38,10 @@ three-run means.
 >    (finding 10).
 >
 > **What it depends on.** Every claim here is conditional on `C`, the cost of a wrong confident
-> answer in units of an unnecessary handoff. v5 beats the baseline for C > 0.36 and beats the old
-> build at every C. The one genuine choice left is `top_k`, which trades the two error types
-> against each other at C ≈ 3.5 — stated below, not assumed away.
+> answer in units of an unnecessary handoff. v5 beats the baseline for C > 0.38, and beats the old
+> build at every C without needing the false-resolution difference — that gap is 0.3 of an item
+> against a spread of 2.08, so nothing rests on it. The one genuine choice left is `top_k`, which
+> trades the two error types against each other at C ≈ 3.6 — stated below, not assumed away.
 >
 > The self-critique below is deliberate. Read it as scope of what was measured, not as a verdict
 > that the approach failed.
@@ -56,7 +57,7 @@ first two numbers are what a deferral gate is for. The third is the one that too
 iterations, because the obvious readings of it were wrong: it was not one defect but three, and
 the largest was in retrieval rather than in the gate. Whether the whole trade is worth making
 depends on what a wrong confident answer costs relative to an unnecessary handoff; that
-break-even is 0.36, computed from the measured error counts, and the ratio itself this project
+break-even is 0.38, computed from the measured error counts, and the ratio itself this project
 does not measure.
 
 ## The problem
@@ -80,12 +81,13 @@ passes, which is part of why they need reading with care (see *Run-to-run varian
 | **False resolutions** (answered when it should have deferred) | 58 | 12 | **9.3** [9–10] | 11.7 [10–14] |
 | False escalations (deferred an answerable ticket) | 0 | 37 | 19.7 [18–22] | **12** [9–14] |
 | Misrouted deferrals (right to defer, wrong lane) | 0 | 7 | 5.3 [5–6] | **4.7** [4–5] |
+| Unwarranted adversarial deferrals (see conventions) | 0 | 2 | 1 | 1 |
 | **False escalation rate** | 0% | 37% | 20% | **12%** [9–14%] |
 | Adversarial decision accuracy (n=60) | 3.3% | 65% | **74%** | 71% [68–73%] |
 | Golden decision accuracy (n=100) | 100% | 63% | 80% | **88%** [86–91%] |
 | Raw decision accuracy (all 160) | 63.7% | 63.7% | 78% | **82%** [79–84%] |
 | Deferral precision (both sets) | — | 54% | 71% | **78%** |
-| Error cost | 58C | 12C + 44 | 9.3C + 25 | **11.7C + 16.7** |
+| Error cost | 58C | 12C + 46 | 9.3C + 26 | **11.7C + 17.7** |
 | LLM calls per ticket | 1 | 1–2 | **1** | **1** |
 
 The second column is the configuration this README used to ship, **re-measured here rather than
@@ -93,12 +95,20 @@ quoted**: its published figures were 44% false escalation and 5 false resolution
 of the identical code gave 37% and 12. Nothing changed but the run. That discrepancy is the
 subject of *Run-to-run variance*, and it is why the v5 columns are averaged.
 
-**v5 at `top_k=10` beats the old build on every error type simultaneously** — fewer false
-resolutions (11.7 vs 12), 25 fewer deferral errors, 6 points more adversarial accuracy, and one
-LLM call instead of up to two. That is not a trade-off being re-balanced; it is the frontier
-moving. The `top_k=5` column is kept because it is a genuinely different point on that frontier
-(fewer false resolutions, more handoffs) and the choice between them is an economics question,
-addressed below.
+**v5 at `top_k=10` is no worse on false resolutions and makes 28 fewer deferral errors**, with 6
+points more adversarial accuracy and one LLM call instead of up to two.
+
+The false-resolution figures are 11.7 against 12 — a difference of 0.3 across runs of [11, 10, 14]
+with a standard deviation of 2.08, against an old-build number from a single run with no spread at
+all. **By this README's own rule that is noise, and no claim rests on it.** Set the two equal and
+v5 still wins by 28.3 handoff-units at every value of `C`, because that margin comes entirely
+from the deferral side, where the difference is 25 points of false escalation rather than
+0.3 of an item. The weaker claim is the one that is actually supported, and it is more than
+enough.
+
+The `top_k=5` column is kept because it is a genuinely different point on that frontier — fewer
+false resolutions, more handoffs, and *that* gap (9.3 vs 11.7) is larger than the spread. The
+choice between them is an economics question, addressed below.
 
 The baseline's 100% golden accuracy and 0% false-escalation rate are trivial, not virtuous: a
 resolver that never defers cannot defer wrongly. It is a floor, not a competitor.
@@ -113,9 +123,31 @@ which is precisely why the argument is worth keeping. It was true when it was in
 
 Deferral precision needs the same care in the other direction. On the adversarial set alone v5
 scores **98%** — when it defers there, it is almost always right. Across both sets it is **78%**,
-because the unwarranted deferrals (12 answerable golden tickets, plus the injection tickets that
-should have been resolved) only enter the denominator once answerable tickets are counted. Both
-numbers are true; only the second is honest on its own.
+because the unwarranted deferrals only enter the denominator once answerable tickets are counted.
+Both numbers are true; only the second is honest on its own.
+
+### Counting conventions
+
+Stated explicitly because two of them are easy to conflate, and this README quotes numbers under
+both.
+
+- **False escalation is golden-only.** It is a *rate over answerable tickets* — "how often does it
+  ask a human for help it did not need?" — so its denominator is the 100 golden items and nothing
+  else. The 12 does **not** include adversarial items.
+- **Two of the 60 adversarial items expect `RESOLVE`** (injection wrapping an answerable request).
+  A deferral on one of those is a genuine unnecessary handoff, but it is neither a false escalation
+  (that rate is golden-only) nor a misrouted deferral (which requires `expected != RESOLVE`). It
+  used to fall through every bucket and disappear from the cost model. **It is now counted as its
+  own row**, and the error-cost formulas here include it: v5 loses 1 item this way in each of the
+  three runs (always `A044`), the old build 2. That is why the formulas read `11.7C + 17.7` rather
+  than `11.7C + 16.7`. It changes no ranking at any `C` — and because it is 1 against 2, omitting
+  it had been flattering v5 by one item.
+- **Deferral precision spans both sets**, so those items are in its denominator. That is the
+  reconciliation for the 78%: 98% counts only adversarial deferrals, 78% counts every deferral
+  the system made.
+- **The results explorer uses the broader convention** and so reports 15 false escalations where
+  the report says 14: its taxonomy calls any deferred answerable ticket a false escalation,
+  golden or not. Both are defensible; they are not interchangeable.
 
 ### Run-to-run variance, and why it is stated first
 
@@ -144,26 +176,34 @@ because every rate is a fraction over the items that survived.
 Let `C` be the cost of one false resolution in units of one unnecessary handoff. Total error cost
 on these 160 items is linear in `C`, and the configurations rank differently depending on it:
 
-| configuration | error cost | C=1 | C=2 | C=3.5 | C=5 | C=10 |
+| configuration | error cost | C=1 | C=2 | C=3.6 | C=5 | C=10 |
 |---|---|---:|---:|---:|---:|---:|
-| baseline | 58C | 58 | 116 | 203 | 290 | 580 |
-| v3 + reviewer *(old ship)* | 12C + 44 | 56 | 68 | 86 | 104 | 164 |
-| **v5 gate, `top_k=10`** *(ships)* | 11.7C + 16.7 | **28** | **40** | **58** | 75 | 134 |
-| v5 gate, `top_k=5` | 9.3C + 25 | 34 | 44 | **58** | **72** | **118** |
-| v5 gate + reviewer, `top_k=10` | 15C + 13 | 28 | 43 | 66 | 88 | 163 |
+| baseline | 58.0C + 0.0 | 58.0 | 116.0 | 208.8 | 290.0 | 580.0 |
+| v3 + reviewer *(old ship)* | 12.0C + 46.0 | 58.0 | 70.0 | 89.2 | 106.0 | 166.0 |
+| **v5 gate, `top_k=10`** *(ships)* | 11.7C + 17.7 | 29.3 | **41.0** | 59.7 | 76.0 | 134.3 |
+| v5 gate, `top_k=5` | 9.3C + 26.0 | 35.3 | 44.7 | **59.6** | **72.7** | **119.3** |
+| v5 gate + reviewer, `top_k=10` *(no citation check)* | 15.0C + 14.0 | **29.0** | 44.0 | 68.0 | 89.0 | 164.0 |
 
 Four things fall out, and only the first was obvious in advance:
 
-1. **v5 beats the baseline for any C > 0.36**, down from 1.19 for the old build. That threshold is
-   computed from the measured error counts; `C` itself is not measured anywhere in this project.
-   Settling it needs deflection-cost and bad-answer-cost figures from whoever owns the queue.
-2. **v5 beats the old build at every C**, because it is better on both error types at once. No
-   window needs stating for that comparison, which was not true of any previous version.
-3. **The one real remaining choice is `top_k`, and it crosses over at C ≈ 3.5.** More context
+1. **v5 beats the baseline for any C > 0.38.** That threshold is computed from the measured error
+   counts; `C` itself is not measured anywhere in this project. Settling it needs deflection-cost
+   and bad-answer-cost figures from whoever owns the queue. (The old README quoted 1.19 for its
+   own build. That was computed on different counts under the previous convention, so the two
+   figures are not directly comparable and no trend should be read from the pair.)
+2. **v5 beats the old build at every C ≥ 0**, and does not need the false-resolution difference to
+   do it. Treat the two as tied on false resolutions — which the spread says you should — and v5
+   is still 28.3 handoff-units cheaper at every `C`, because the margin is entirely on the
+   deferral side.
+3. **The one real remaining choice is `top_k`, and it crosses over at C ≈ 3.6.** More context
    recovers answerable tickets and also hands the model more adjacent material to mistake for an
-   answer. Below 3.5, take the deflection; above it, take the caution. This is the honest shape
+   answer. Below 3.6, take the deflection; above it, take the caution. This is the honest shape
    of the trade and it does not go away.
-4. **The reviewer is now off by default** — a reversal, and finding 10.
+4. **The reviewer is now off by default** — a reversal, and finding 10. Note that it does hold the
+   cheapest cell at C=1 (29.0 against 29.3), which is the same fact as its break-even being 1.6:
+   below that it still pays. The default is set for the region above, and the margin there is
+   0.3 of a handoff-unit — smaller than the spread between identical runs, so C=1 is not a
+   reason to switch it on either.
 
 So the ratio stays a constructor argument rather than a hardcoded belief:
 
@@ -437,8 +477,16 @@ which is exactly why v4's sterner version of the same judgement failed. `require
 became act-based. `kb_coverage` split collection from derivation.
 
 Measured, gate-only at unchanged `top_k=5`: **golden CLARIFY fell 25 → 1**, false escalation 37%
-→ 16–19%, and adversarial accuracy *rose* 65% → 74% with `near_miss` reaching 100%. Both sets
-improved, which no previous revision managed.
+→ **18–22%** (mean 19.7%, three runs), and adversarial accuracy *rose* 65% → 74% with `near_miss`
+reaching 100%. Both sets improved, which no previous revision managed.
+
+*A correction, since an earlier draft of this section said 16–19%.* That lower bound came from an
+intermediate revision measured before the authority and pricing rules were narrowed, and its
+report was not retained — so it was a number no reader could check, which is the one thing this
+README is not supposed to contain. The committed reports (`v5_topk5_run{1,2,3}.json`) give 19%,
+22%, 18%. The intermediate looked better on false escalation and worse on false resolutions
+(11 against 10), and at n=100 with a ±3-point spread that difference was never distinguishable
+anyway.
 
 Two corrections were needed along the way, and both are the same shape — a rule stated too
 broadly. Loosening coverage to permit assembly initially resolved **11 of 20** out_of_kb items,
@@ -491,15 +539,22 @@ those:
 
 | | false resolutions | deferral errors | error cost |
 |---|---:|---:|---|
-| v5 gate, `top_k=5` | 9.3 | 25.0 | 9.3C + 25.0 |
-| … + reviewer | 13.0 | 25.0 | 13.0C + 25.0 |
-| v5 gate, `top_k=10` | 12.5 | 17.0 | 12.5C + 17.0 |
-| … + reviewer | 15.0 | 13.0 | 15.0C + 13.0 |
+| v5 gate, `top_k=5` | 9.3 | 26.0 | 9.3C + 26.0 |
+| … + reviewer | 13.0 | 26.0 | 13.0C + 26.0 |
+| v5 gate, `top_k=10` **(no citation check)** | 12.5 | 18.0 | 12.5C + 18.0 |
+| … + reviewer | 15.0 | 14.0 | 15.0C + 14.0 |
 
-At `top_k=5` it is strictly dominated — 3.7 more false resolutions and not one fewer handoff. At
-`top_k=10` it wins only below C = 1.6, against a gate that beats the baseline above C = 0.36. Its
-break-even moved from **7.0 to 1.6** between v3 and v5, and both constants are in the code with
-the derivation next to them.
+**Note the label on the third row: it is the pre-citation-check build, not the shipped one.** The
+shipped configuration is 11.7C + 17.7, and the reviewer was never measured against it — the credit
+budget ran out before that pairing could be run. So the 1.6 break-even is derived against the
+`nocite` build. Both sides of the comparison are that build, so the number is internally valid; it
+is just not a statement about what ships, and the gap would have to close by a factor of four to
+change the default.
+
+At `top_k=5` the reviewer is strictly dominated — 3.7 more false resolutions and not one fewer
+handoff. At `top_k=10` it wins only below C = 1.6, against a gate that beats the baseline above
+C = 0.38. Its break-even moved from **7.0 to 1.6** between v3 and v5, and both constants are in
+the code with the derivation next to them.
 
 The general lesson is worth more than the configuration change: **a compensating mechanism is
 evidence about the thing it compensates for, and its value is not additive.** Fixing the cause
@@ -534,7 +589,7 @@ iteration, and would have quietly falsified the published artefact.
    documented tension between step 1 and step 2 — "I need my domain unlocked" is both vague and an
    authority case, and the precedence rule picks CLARIFY where the label wants ESCALATE. Needs a
    bigger injection set before it can be measured, let alone tuned.
-4. **Get a real cost ratio.** The break-even is now 0.36 for shipping the gate at all, and C ≈ 3.5
+4. **Get a real cost ratio.** The break-even is now 0.38 for shipping the gate at all, and C ≈ 3.6
    for the `top_k` choice. The second one is a live decision an operator has to make; the first is
    low enough that it is hard to see reality failing it. Both are questions for whoever owns the
    support queue.
@@ -569,7 +624,7 @@ iteration, and would have quietly falsified the published artefact.
   weaker still — see *Run-to-run variance*, where re-measuring the old build moved its headline
   7 points.
 - **The `top_k` frontier is measured at two points.** `top_k` 8 and 12 have recall figures but no
-  end-to-end decision runs, so the crossover at C ≈ 3.5 is drawn through two points. The API
+  end-to-end decision runs, so the crossover at C ≈ 3.6 is drawn through two points. The API
   budget ran out before 8 could be measured, and 8 is where I would look first: it has 86% recall
   for 3k fewer characters of context than 10.
 - **The results explorer shows a single run, not the reported means.** `docs/data.js` is one
@@ -605,7 +660,7 @@ iteration, and would have quietly falsified the published artefact.
   `gpt-5-mini`. See `eval_results/baseline_sampled.json`. Every other figure in this README is
   gpt-5-mini.
 - **The 160-item mix is arbitrary.** Every combined figure — raw accuracy, deferral precision, and
-  the cost curves that set the 0.36 and 3.5 thresholds — assumes a 100:60
+  the cost curves that set the 0.38 and 3.6 thresholds — assumes a 100:60
   answerable-to-adversarial ratio. Real traffic has its own ratio, and all of it moves with it.
   This matters more for the `top_k` crossover than for anything else: it is a comparison between
   an error counted on golden and an error counted on adversarial, so it moves directly with the

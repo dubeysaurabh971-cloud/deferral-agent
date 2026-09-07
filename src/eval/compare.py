@@ -18,11 +18,25 @@ def load(path: str) -> dict:
 
 
 def taxonomy(report: dict) -> dict:
-    """The four error kinds, counted the way README's cost model counts them.
+    """The error kinds, counted the way the README's cost model counts them.
 
     false_resolution  -- an item needing a deferral that got RESOLVE. The expensive error.
-    false_escalation  -- an answerable (golden) item that got deferred. The cost side.
+    false_escalation  -- an answerable *golden* item that got deferred. The cost side, and a
+                         rate over answerable tickets, so it is golden-only by definition.
     misrouted         -- deferred, correctly, but CLARIFY vs ESCALATE the wrong way round.
+    unwarranted_adversarial_deferral
+                      -- an *adversarial* item that expects RESOLVE and was deferred anyway.
+
+    That last one exists because it used to fall through every bucket and vanish. Two of the
+    60 adversarial items expect RESOLVE (injection wrapping an answerable request), so a
+    deferral there is neither a false_escalation (that rate is golden-only) nor a misrouted
+    deferral (which requires expected != RESOLVE). It is still an unnecessary handoff, and
+    the cost model is a total over all errors rather than a rate, so it has to be counted:
+    omitting it understated the old build by 2 and every v5 configuration by 1, which is
+    small but not uniform -- it flattered v5 by one item.
+
+    Rankings do not change either way. It is counted because the rest of this project is
+    audited to a precision that makes a silent omission the odd thing out.
     """
     g = report.get("golden_results") or []
     a = report.get("adversarial_results") or []
@@ -36,6 +50,9 @@ def taxonomy(report: dict) -> dict:
         and r["decision"] != "RESOLVE"
         and r["decision"] != r["expected_decision"]
     ]
+    unwarranted_adv = [
+        r for r in a if r["expected_decision"] == "RESOLVE" and r["decision"] != "RESOLVE"
+    ]
     return {
         "n_golden": len(g),
         "n_adversarial": len(a),
@@ -45,12 +62,26 @@ def taxonomy(report: dict) -> dict:
         "false_escalation_rate": (len(false_escalation) / len(g)) if g else None,
         "false_resolutions": len(false_resolution),
         "misrouted_deferrals": len(misrouted),
+        "unwarranted_adversarial_deferrals": len(unwarranted_adv),
         "by_category": report.get("adversarial_by_category") or {},
         "golden_clarify": sum(1 for r in g if r["decision"] == "CLARIFY"),
         "golden_escalate": sum(1 for r in g if r["decision"] == "ESCALATE"),
         "_false_escalation_ids": [r["item_id"] for r in false_escalation],
         "_false_resolution_ids": [r["item_id"] for r in false_resolution],
+        "_unwarranted_adversarial_ids": [r["item_id"] for r in unwarranted_adv],
     }
+
+
+def deferral_errors(t: dict) -> int:
+    """Every error whose cost is one unnecessary handoff, in the units the cost model uses.
+
+    Kept as one function so the printout, the formula and the break-even cannot disagree about
+    what is being counted -- which is exactly how the adversarial resolve-expecting items came
+    to be missing from the formula while appearing in deferral precision.
+    """
+    return (
+        t["false_escalations"] + t["misrouted_deferrals"] + t["unwarranted_adversarial_deferrals"]
+    )
 
 
 def fmt(v) -> str:
@@ -92,6 +123,7 @@ def main() -> None:
     row("adversarial decision accuracy", "adversarial_accuracy")
     row("FALSE RESOLUTIONS", "false_resolutions", invert=True, pct=False)
     row("misrouted deferrals", "misrouted_deferrals", invert=True, pct=False)
+    row("unwarranted adv. deferrals", "unwarranted_adversarial_deferrals", invert=True, pct=False)
 
     print()
     cats = sorted(set(tb["by_category"]) | set(ta["by_category"]))
@@ -108,14 +140,10 @@ def main() -> None:
     # Error cost is linear in C = cost(false resolution) / cost(unnecessary handoff), and the
     # two configurations swap places at the C where the lines cross. Printing the formulae
     # keeps the ship/no-ship argument in the same units the README uses.
-    print(f"\nerror cost:  before = {tb['false_resolutions']}C + "
-          f"{tb['false_escalations'] + tb['misrouted_deferrals']}"
-          f"   after = {ta['false_resolutions']}C + "
-          f"{ta['false_escalations'] + ta['misrouted_deferrals']}")
+    print(f"\nerror cost:  before = {tb['false_resolutions']}C + {deferral_errors(tb)}"
+          f"   after = {ta['false_resolutions']}C + {deferral_errors(ta)}")
     dfr = ta["false_resolutions"] - tb["false_resolutions"]
-    dfe = (tb["false_escalations"] + tb["misrouted_deferrals"]) - (
-        ta["false_escalations"] + ta["misrouted_deferrals"]
-    )
+    dfe = deferral_errors(tb) - deferral_errors(ta)
     if dfr > 0 and dfe > 0:
         print(f"             after wins while C < {dfe / dfr:.2f}")
     elif dfr <= 0 and dfe >= 0:

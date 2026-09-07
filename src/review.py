@@ -124,13 +124,18 @@ def review_clarification(
 # Under v5 it loses, and by a wide margin. Measured at both retrieval settings (means over the
 # runs in eval_results/, gate-only vs the same gate with the reviewer on):
 #
-#     v5 gate, top_k=5         9.3C + 25.0     reviewer on:  13.0C + 25.0
-#     v5 gate, top_k=10       12.5C + 17.0     reviewer on:  15.0C + 13.0
+#     v5 gate, top_k=5         9.3C + 26.0     reviewer on:  13.0C + 26.0
+#     v5 gate, top_k=10       12.5C + 18.0     reviewer on:  15.0C + 14.0
+#
+# Both top_k=10 rows are the build WITHOUT the citation check, which is the only pairing where
+# the reviewer was measured on both sides; the credit budget ran out before it could be run
+# against the shipped configuration. Deferral errors here include the adversarial items that
+# expect RESOLVE and were deferred, which the earlier version of this comment omitted.
 #
 # At top_k=5 the reviewer is strictly dominated -- 3.7 more false resolutions and no fewer
 # deferral errors. At top_k=10 it buys 4 fewer deferral errors for 2.5 more false resolutions,
 # which is a win only below C = 1.6; the gate itself only beats the ungated baseline above
-# C = 1.19, so the window where the reviewer helps is a slice barely wider than the noise.
+# C = 0.38, so the window where the reviewer helps is a slice barely wider than the noise.
 #
 # The cause is not that the reviewer got worse. It is that the reviewer was a *compensator* for
 # the gate's over-clarification: it existed to catch clarifications that should have been

@@ -17,7 +17,7 @@ import json
 import statistics
 
 from src import config
-from src.eval.compare import taxonomy
+from src.eval.compare import deferral_errors, taxonomy
 
 RESULTS_DIR = config.ROOT_DIR / "eval_results"
 
@@ -29,6 +29,7 @@ METRICS = (
     "false_escalations",
     "false_resolutions",
     "misrouted_deferrals",
+    "unwarranted_adversarial_deferrals",
     "adversarial_accuracy",
     "golden_clarify",
     "golden_escalate",
@@ -80,14 +81,16 @@ def aggregate(filenames: list[str], label: str) -> dict:
     }
 
     fr = out["metrics"]["false_resolutions"]["mean"]
-    deferral_errors = (
-        out["metrics"]["false_escalations"]["mean"] + out["metrics"]["misrouted_deferrals"]["mean"]
-    )
+    de = statistics.mean(deferral_errors(t) for t in taxes)
     out["error_cost"] = {
-        "formula": f"{fr:.1f}C + {deferral_errors:.1f}",
+        "formula": f"{fr:.1f}C + {de:.1f}",
         "false_resolutions": fr,
-        "deferral_errors": deferral_errors,
-        "note": "C = cost(false resolution) / cost(unnecessary handoff).",
+        "deferral_errors": de,
+        "note": (
+            "C = cost(false resolution) / cost(unnecessary handoff). Deferral errors are every "
+            "error costing one handoff: false escalations (golden), misrouted deferrals, and "
+            "adversarial items that expect RESOLVE but were deferred."
+        ),
     }
     out["token_spend_per_run"] = {
         "input_tokens": statistics.mean(r["token_spend"]["input_tokens"] for r in reports),

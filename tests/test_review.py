@@ -135,12 +135,16 @@ def test_review_can_be_disabled():
 # --- configuration is an economics question, not a model property ------------------
 
 def test_break_even_matches_the_measured_cost_curves():
-    """v5 gate at top_k=10 = 12.5C+17, same gate with the reviewer = 15C+13; equal at C=1.6.
+    """v5 gate at top_k=10 (no citation check) = 12.5C+18, same gate with the reviewer =
+    15C+14; equal at C=1.6.
 
-    Means over the runs in eval_results/. The v3-era pair is kept too, because the README's
-    finding 4 is stated in those numbers and should stay checkable against the code."""
+    Means over the runs in eval_results/, with deferral errors counting the adversarial
+    resolve-expecting items too. Both sides are the pre-citation-check build because that is
+    the only top_k=10 pairing where the reviewer was measured on both sides. The v3-era pair is
+    kept as well, because the README's finding 4 is stated in those numbers and should stay
+    checkable against the code."""
     C = review.REVIEW_BREAK_EVEN_C
-    assert 12.5 * C + 17.0 == pytest.approx(15.0 * C + 13.0)
+    assert 12.5 * C + 18.0 == pytest.approx(15.0 * C + 14.0)
 
     C_v3 = review.REVIEW_BREAK_EVEN_C_V3
     assert 4 * C_v3 + 64 == pytest.approx(5 * C_v3 + 57)
