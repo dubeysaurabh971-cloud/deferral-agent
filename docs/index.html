@@ -77,6 +77,10 @@ h1{
   padding:11px 14px; border-radius:0 6px 6px 0; max-width:70ch;
 }
 .verdict p{margin:0; font-size:14px; color:var(--ink)}
+/* A page whose data is superseded should not look like a current result. Amber, not red: the
+   rows are stale, not wrong -- they are exactly what the v3 run produced. Reuses --clarify
+   rather than new literals, so it follows the light/dark palette like everything else. */
+.verdict.stale{border-left-color:var(--clarify); background:var(--clarify-soft)}
 .repo{display:flex; gap:16px; flex-wrap:wrap; font-size:13px; font-family:var(--mono)}
 
 /* ---- metrics ---- */
@@ -175,10 +179,18 @@ footer p{margin:0 0 7px; font-size:13px; color:var(--muted); max-width:70ch}
       The baseline it replaces answered all 160 — including 58 it had no business answering.
       Open any row for the model's reasoning, its coverage call, and what it actually said.
     </p>
-    <div class="verdict">
-      <p><strong>This is not a shippable system, and that is the finding.</strong> It cuts confidently-wrong
-      answers from 58 to 5, but refuses 44% of answerable tickets — well above the 15% bar its README sets.
-      The interesting part is the measurement, not the agent.</p>
+    <div class="verdict stale">
+      <p><strong>The rows below are the superseded v3 run.</strong> They are kept because the
+      reasoning in them is what diagnosed the defect — but the numbers on this page are no longer
+      the project's result. v3 refused <strong>44%</strong> of answerable tickets, well above the
+      15% bar its README sets, and this page used to conclude the system was unshippable.</p>
+      <p style="margin-top:7px">
+      <strong>v5 clears that bar: false escalation 37% → 12%</strong>, with false resolutions no
+      worse and adversarial accuracy up 6 points. Over-deferral turned out to be three defects,
+      and the largest was retrieval, not caution — recall@5 was 76%, so 24 of 100 answerable
+      tickets never had their answer in context and no calibration could have saved them.
+      <a href="https://github.com/dubeysaurabh971-cloud/deferral-agent#findings">Findings 8–10</a>
+      have the details. Regenerating these rows needs one clean scoring pass, which is pending.</p>
     </div>
     <div class="repo">
       <a href="https://github.com/dubeysaurabh971-cloud/deferral-agent">github.com/dubeysaurabh971-cloud/deferral-agent</a>

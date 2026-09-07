@@ -8,7 +8,9 @@ measurement of what that costs.
 
 **[Browse all 160 decisions →](https://dubeysaurabh971-cloud.github.io/deferral-agent/)** — every
 ticket the gate answered, asked about, or handed off, with its reasoning and coverage call. No API
-key, no backend; generated from the trace log.
+key, no backend; generated from the trace log. **Currently showing the superseded v3 run**, which
+is what the reasoning in finding 8 was diagnosed from; regenerating it for v5 needs one clean
+scoring pass and the page says so at the top.
 
 > **What this proves.** A single structured self-assessment call can near-eliminate confidently
 > wrong answers in support RAG — false resolutions **58 → 12** — and this trade-off has to be
