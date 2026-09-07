@@ -162,14 +162,31 @@ def review_is_worthwhile(cost_ratio: float) -> bool:
     return cost_ratio < REVIEW_BREAK_EVEN_C
 
 
-def apply_review(review: ClarificationReview) -> tuple[str, str | None]:
-    """Map a review to (decision, answer_override).
+#: apply_review outcomes. The two CLARIFY cases are different events and only one of them is
+#: the mechanism working as designed:
+#:
+#:   question_stands  -- the reviewer judged the clarification necessary. Expected, and the
+#:                       common case under v5 now that the gate rarely over-clarifies.
+#:   no_replacement   -- the reviewer judged it UNNECESSARY but returned no answer to put in
+#:                       its place. That is a malfunction, not a verdict: it asked for a flip
+#:                       and supplied nothing to flip to. The deferral stands either way, so it
+#:                       is invisible in the decision metrics, which is exactly why it needs a
+#:                       name -- a reviewer failing this way on every item would look like a
+#:                       reviewer that simply never fires.
+QUESTION_STANDS = "question_stands"
+NO_REPLACEMENT = "no_replacement"
+FLIPPED = "flipped"
+
+
+def apply_review(review: ClarificationReview) -> tuple[str, str | None, str]:
+    """Map a review to (decision, answer_override, outcome).
 
     Refuses to flip without a replacement answer: a RESOLVE whose answer is the clarifying
-    question would be worse than the deferral it replaced.
+    question would be worse than the deferral it replaced. `outcome` distinguishes that refusal
+    from an ordinary upheld question -- see the constants above.
     """
     if review.question_is_necessary:
-        return "CLARIFY", None
+        return "CLARIFY", None, QUESTION_STANDS
     if not review.answer or not review.answer.strip():
-        return "CLARIFY", None
-    return "RESOLVE", review.answer
+        return "CLARIFY", None, NO_REPLACEMENT
+    return "RESOLVE", review.answer, FLIPPED

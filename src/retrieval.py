@@ -2,6 +2,7 @@
 Reciprocal Rank Fusion (RRF). Hybrid beats dense-only on support docs full of product names
 and error codes that embeddings tend to blur together.
 """
+import heapq
 import json
 import re
 
@@ -19,8 +20,21 @@ def _tokenize(text: str) -> list[str]:
 
 
 class HybridRetriever:
-    def __init__(self, candidate_pool: int = 20):
+    def __init__(self, candidate_pool: int = 20, top_k: int | None = None):
+        """top_k defaults to config.RETRIEVAL_TOP_K, resolved HERE rather than in the signature
+        of retrieve().
+
+        It used to be `def retrieve(self, query, top_k=config.RETRIEVAL_TOP_K)`, which binds the
+        default once at import time. Same value in a normal run, so it was never a live bug --
+        but anything that set config.RETRIEVAL_TOP_K after import (a test, a sweep script) got
+        retrieval quietly using the old value while resolver.py stamped the NEW one into
+        gate_config, because that field is read at call time. gate_config exists precisely so a
+        trace cannot lie about its own provenance, and this was the one path where it still
+        could. Binding it to the instance closes that and gives callers something truthful to
+        record: retriever.top_k is what retrieval actually used.
+        """
         self.candidate_pool = candidate_pool
+        self.top_k = config.RETRIEVAL_TOP_K if top_k is None else top_k
 
         chunks_path = config.DATA_DIR / "kb" / "chunks.jsonl"
         if not chunks_path.exists():
@@ -39,15 +53,21 @@ class HybridRetriever:
         )
 
     def _bm25_ranking(self, query: str) -> list[str]:
+        # nlargest rather than a full sort: this ranks 10,068 chunks to keep 20, and it runs
+        # once per ticket alongside the dense query. Same result, O(n log k) instead of
+        # O(n log n).
         scores = self._bm25.get_scores(_tokenize(query))
-        ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
-        return [self.chunks[i]["chunk_id"] for i in ranked_indices[: self.candidate_pool]]
+        top = heapq.nlargest(self.candidate_pool, range(len(scores)), key=scores.__getitem__)
+        return [self.chunks[i]["chunk_id"] for i in top]
 
     def _dense_ranking(self, query: str) -> list[str]:
         result = self._collection.query(query_texts=[query], n_results=self.candidate_pool)
         return result["ids"][0]
 
-    def retrieve(self, query: str, top_k: int = config.RETRIEVAL_TOP_K) -> list[dict]:
+    def retrieve(self, query: str, top_k: int | None = None) -> list[dict]:
+        """top_k=None uses the value bound at construction. See __init__ for why the default is
+        not in this signature."""
+        top_k = self.top_k if top_k is None else top_k
         bm25_ids = self._bm25_ranking(query)
         dense_ids = self._dense_ranking(query)
 

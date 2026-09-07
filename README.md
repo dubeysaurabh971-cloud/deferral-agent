@@ -334,7 +334,14 @@ Every number in this README traces to a committed report. The v5 ones:
 
 All were run with `--no-judge`; every one carries its own `token_spend`, `workers`,
 `review_clarifications`, and a `failures` list. Runs that lost items are excluded from the
-aggregates rather than averaged in.
+aggregates rather than averaged in, as are runs that disagree on model, reviewer setting or
+`top_k`.
+
+One caveat on the two aggregates: they carry `retrieval_top_k` with
+`"retrieval_top_k_provenance": "asserted by the operator"`, because these runs predate the
+harness recording it (finding 11 again). The assertion is not a guess — the traces hold 5 and 10
+retrieved chunks per ticket respectively, which is what `top_k` *is* — but it is labelled as
+asserted rather than measured, and runs from here on record it themselves.
 
 ## Findings
 
@@ -571,6 +578,30 @@ configuration that produced them (`gate_version`, `top_k`, reviewer, knob), sele
 what it wants, and the export **refuses to write a page** unless every ticket matches one
 configuration. Not a modelling finding, but the failure was silent, self-inflicted by ordinary
 iteration, and would have quietly falsified the published artefact.
+
+**The same shape then turned up twice more, which is what makes it a finding rather than an
+anecdote.** A code review after the fact found both:
+
+- `aggregate.py` recorded `retrieval_top_k` by reading **ambient config at aggregation time**
+  rather than from the runs. So `v5_topk5.json` — the `top_k=5` variant — reported
+  `retrieval_top_k: 10`. Worse, it was unrecoverable from the reports, because the per-run
+  reports did not record `top_k` at all: the only thing distinguishing this README's two
+  frontier columns was a label a human had typed. And the `C ≈ 3.6` crossover argument turns
+  entirely on which column is which, so an auditor trusting the machine-readable field over
+  the prose would have got the wrong answer. The harness now records it from the retriever that
+  served the run, and `aggregate` refuses to average runs whose `top_k` disagrees.
+- `HybridRetriever.retrieve` had `top_k=config.RETRIEVAL_TOP_K` **in its signature**, evaluated
+  once at import. Anything changing that value afterwards got retrieval silently using the old
+  one while `resolver.py` stamped the new one into `gate_config` — the one remaining path by
+  which a trace could lie about its own provenance, inside the very mechanism built to stop
+  that.
+
+The generalisation: **a provenance field must be read from the thing that did the work, never
+from ambient state at the time of reporting.** Config at report time, an index into an
+append-only log, a default bound at import — all three are the same bug, and all three fail by
+producing a plausible number instead of an error. The only defence is a test, because there is
+nothing to notice at runtime. `tests/test_provenance.py` now pins all of them, including that a
+genuine 0% stays distinguishable from a fabricated one.
 
 ## What I would do next
 

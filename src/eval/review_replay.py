@@ -142,7 +142,7 @@ def collect_verdicts(traces: dict) -> tuple[list[dict], dict]:
         spend["input_tokens"] += usage.input_tokens
         spend["output_tokens"] += usage.output_tokens
         spend["calls"] += 1
-        proposed, _ = review.apply_review(verdict)
+        proposed, _, _ = review.apply_review(verdict)
         rows.append({
             "dataset": dataset, "item_id": item_id, "category": category, "expected": expected,
             "flipped_to_resolve": proposed == "RESOLVE",

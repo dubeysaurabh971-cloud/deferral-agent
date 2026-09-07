@@ -1,9 +1,10 @@
 """Two resolvers, kept side by side so the gate can be measured against the thing it replaces.
 
-NaiveResolver  — Week 1 baseline. Always answers, always reports RESOLVE. Measured at 0/4
-                 adversarial decision accuracy: it states "the excerpts don't cover this" in
-                 prose and then marks the ticket resolved anyway.
-GatedResolver  — Week 3. One structured call yields both the answer and an assessment of
+NaiveResolver  — the ungated baseline. Always answers, always reports RESOLVE. Measured at
+                 3.3% adversarial decision accuracy (2 of 60, and both are accidents: they are
+                 the only items whose expected decision is RESOLVE). It states "the excerpts
+                 don't cover this" in prose and then marks the ticket resolved anyway.
+GatedResolver  — the v5 gate. One structured call yields both the answer and an assessment of
                  coverage, missing detail, and whether a human must act; src/gate.py maps
                  that to the decision. Same number of LLM calls as the baseline.
 """
@@ -83,8 +84,8 @@ class GatedResolver:
         The reviewer was a compensator for the gate's over-clarification, and v5 removed the
         over-clarification: golden CLARIFY fell from 25 to 1-6, so the reviewer now mostly
         overturns genuine clarifications. It measured as strictly dominated at top_k=5 and as a
-        win only below C = 1.6 at top_k=10 -- against a gate that itself only beats the ungated
-        baseline above C = 1.19. See the cost curves in src/review.py.
+        win only below C = 1.6 at top_k=10 -- against a gate that itself beats the ungated
+        baseline above C = 0.38. See the cost curves in src/review.py.
         """
         self.retriever = HybridRetriever()
         self.escalate_on_partial = escalate_on_partial
@@ -111,9 +112,17 @@ class GatedResolver:
             return decision, attempt.answer, "review skipped: injection attempt detected", None
 
         verdict, usage = review.review_clarification(ticket_text, chunks, attempt.answer)
-        proposed, answer_override = review.apply_review(verdict)
+        proposed, answer_override, outcome = review.apply_review(verdict)
         if proposed != "RESOLVE":
-            return decision, attempt.answer, "review: question stands", usage
+            # A reviewer that asked for a flip and supplied no answer is malfunctioning, not
+            # judging. Both leave the deferral standing, so the decision metrics cannot tell
+            # them apart -- the note is the only place the difference survives.
+            note = (
+                "review: question stands"
+                if outcome == review.QUESTION_STANDS
+                else "review: proposed a flip but returned no replacement answer"
+            )
+            return decision, attempt.answer, note, usage
 
         # Would the policy layer have allowed this resolution? If not, the deferral stands.
         probe = attempt.model_copy(update={"decision": "RESOLVE"})
@@ -134,11 +143,12 @@ class GatedResolver:
         attempt, usage = llm_client.chat_structured(prompt, gate.ResolutionAttempt, max_tokens=4096)
         decision, override_reason = gate.apply_policy(attempt, self.escalate_on_partial)
 
-        answer, review_note = attempt.answer, None
+        answer, review_note, answer_replaced = attempt.answer, None, False
         if decision == "CLARIFY" and self.review_clarifications:
             decision, answer, review_note, review_usage = self._review_clarify(
                 ticket_text, chunks, attempt, decision
             )
+            answer_replaced = answer != attempt.answer
             if review_usage is not None:
                 usage = llm_client.LLMUsage(
                     usage.input_tokens + review_usage.input_tokens,
@@ -161,7 +171,11 @@ class GatedResolver:
             "injection_attempt_detected": attempt.injection_attempt_detected,
             "reasoning": attempt.reasoning,
             "answer": answer,
-            "model_answer": attempt.answer if answer is not attempt.answer else None,
+            # The gate's own text, kept only when the reviewer replaced it. This used to test
+            # `answer is not attempt.answer` -- correct, since `answer` starts out as that very
+            # object, but it made a visible field depend on object identity surviving every
+            # future edit to the lines above. An explicit flag says what is meant.
+            "model_answer": attempt.answer if answer_replaced else None,
             "clarify_review": review_note,
             "model": config.active_model(),
             "resolver": "gated",
@@ -172,7 +186,11 @@ class GatedResolver:
                 "gate_version": gate.GATE_VERSION,
                 "review_clarifications": self.review_clarifications,
                 "escalate_on_partial": self.escalate_on_partial,
-                "retrieval_top_k": config.RETRIEVAL_TOP_K,
+                # Off the retriever that served this call, not off config. Reading config here
+                # was the last path by which a trace could misreport its own provenance: a
+                # retriever built with an explicit top_k, or built before config changed, would
+                # be stamped with whatever config held at call time instead.
+                "retrieval_top_k": self.retriever.top_k,
             },
             "gate_version": gate.GATE_VERSION,
             "usage": {

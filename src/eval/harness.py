@@ -404,6 +404,11 @@ def run_full_report(
         "n_adversarial_available": len(all_adversarial),
         "n_failed": len(failures),
         "workers": workers,
+        # Read off the retriever that actually served this run, not off config at report-assembly
+        # time. Two frontier configurations here differ only by top_k, and for a while nothing in
+        # a per-run report distinguished them -- so the only thing separating them was a label a
+        # human typed. Provenance has to come from the object that did the work.
+        "retrieval_top_k": getattr(getattr(resolver, "retriever", None), "top_k", None),
         "review_clarifications": review_clarifications if resolver_name == "gated" else None,
         "failures": failures,
         "token_spend": {

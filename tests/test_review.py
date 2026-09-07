@@ -66,19 +66,27 @@ class _Usage:
 # --- apply_review -----------------------------------------------------------------
 
 def test_necessary_question_stands():
-    assert review.apply_review(verdict(True))[0] == "CLARIFY"
+    decision, _, outcome = review.apply_review(verdict(True))
+    assert decision == "CLARIFY"
+    assert outcome == review.QUESTION_STANDS
 
 
 def test_flip_requires_a_replacement_answer():
     """A RESOLVE whose text is still the clarifying question is worse than the deferral."""
-    assert review.apply_review(verdict(False, answer=None))[0] == "CLARIFY"
-    assert review.apply_review(verdict(False, answer="   "))[0] == "CLARIFY"
+    for empty in (None, "   "):
+        decision, _, outcome = review.apply_review(verdict(False, answer=empty))
+        assert decision == "CLARIFY"
+        assert outcome == review.NO_REPLACEMENT, (
+            "a refused flip must be distinguishable from an upheld question: both leave the "
+            "deferral standing, so the outcome tag is the only signal a reviewer is malfunctioning"
+        )
 
 
 def test_flip_allowed_with_an_answer():
-    decision, answer = review.apply_review(verdict(False))
+    decision, answer, outcome = review.apply_review(verdict(False))
     assert decision == "RESOLVE"
     assert "Settings" in answer
+    assert outcome == review.FLIPPED
 
 
 # --- the guards in GatedResolver --------------------------------------------------

@@ -48,7 +48,7 @@ def spread(values: list[float]) -> dict:
     }
 
 
-def aggregate(filenames: list[str], label: str) -> dict:
+def aggregate(filenames: list[str], label: str, asserted_top_k: int | None = None) -> dict:
     reports = [json.loads((RESULTS_DIR / f).read_text(encoding="utf-8")) for f in filenames]
     incomplete = [
         f for f, r in zip(filenames, reports)
@@ -61,6 +61,23 @@ def aggregate(filenames: list[str], label: str) -> dict:
             "the items that survived, so averaging a run that lost items silently reweights it."
         )
 
+    # Averaging runs made under different configurations produces a number no configuration
+    # ever had. Same refusal as above, for the same reason.
+    for field in ("resolver_model", "review_clarifications", "retrieval_top_k"):
+        values = {f: r.get(field) for f, r in zip(filenames, reports)}
+        distinct = set(values.values())
+        if len(distinct) > 1:
+            raise SystemExit(
+                f"refusing to aggregate runs that disagree on {field}: {values}"
+            )
+
+    # top_k used to be read from ambient config here, which reported whatever the environment
+    # happened to hold at aggregation time rather than what the runs used -- v5_topk5.json
+    # claimed top_k=10. Runs made before the harness recorded it carry None, and the honest
+    # value is then "unknown", not a guess: pass --retrieval-top-k to assert it explicitly and
+    # it is recorded as operator-asserted rather than measured.
+    recorded_top_k = reports[0].get("retrieval_top_k")
+
     taxes = [taxonomy(r) for r in reports]
     out = {
         "label": label,
@@ -68,16 +85,33 @@ def aggregate(filenames: list[str], label: str) -> dict:
         "source_reports": filenames,
         "resolver_model": reports[0].get("resolver_model"),
         "review_clarifications": reports[0].get("review_clarifications"),
-        "retrieval_top_k": config.RETRIEVAL_TOP_K,
+        "retrieval_top_k": recorded_top_k if recorded_top_k is not None else asserted_top_k,
+        "retrieval_top_k_provenance": (
+            "recorded by the run" if recorded_top_k is not None
+            else ("asserted by the operator" if asserted_top_k is not None else "not recorded")
+        ),
         "n_golden": taxes[0]["n_golden"],
         "n_adversarial": taxes[0]["n_adversarial"],
         "metrics": {m: spread([t[m] for t in taxes]) for m in METRICS},
     }
 
+    # Categories are unioned across runs, and a missing one used to fall back to 0.0 -- which
+    # averages in as a genuine 0% and drags the mean down exactly like a real regression. The
+    # baseline legitimately scores 0% on three categories, so the two are indistinguishable by
+    # eye as well as in the arithmetic. Refuse, as with lost items.
     cats = sorted({c for t in taxes for c in t["by_category"]})
+    for c in cats:
+        missing = [
+            f for f, t in zip(filenames, taxes)
+            if (t["by_category"].get(c) or {}).get("decision_accuracy") is None
+        ]
+        if missing:
+            raise SystemExit(
+                f"refusing to aggregate: category {c!r} is absent from {missing}. Averaging it "
+                "as 0.0 would be indistinguishable from a measured 0%."
+            )
     out["by_category"] = {
-        c: spread([(t["by_category"].get(c) or {}).get("decision_accuracy") or 0.0 for t in taxes])
-        for c in cats
+        c: spread([t["by_category"][c]["decision_accuracy"] for t in taxes]) for c in cats
     }
 
     fr = out["metrics"]["false_resolutions"]["mean"]
@@ -105,9 +139,14 @@ def main() -> None:
     ap.add_argument("reports", nargs="+", help="filenames under eval_results/")
     ap.add_argument("--label", required=True)
     ap.add_argument("--out", required=True, help="output filename under eval_results/")
+    ap.add_argument(
+        "--retrieval-top-k", type=int, default=None,
+        help="assert the top_k these runs used, for runs made before the harness recorded it. "
+             "Recorded as operator-asserted, never as measured.",
+    )
     args = ap.parse_args()
 
-    out = aggregate(args.reports, args.label)
+    out = aggregate(args.reports, args.label, args.retrieval_top_k)
     (RESULTS_DIR / args.out).write_text(json.dumps(out, indent=2), encoding="utf-8")
 
     print(f"\n{out['label']}  ({out['n_runs']} runs, n={out['n_golden']}+{out['n_adversarial']})\n")

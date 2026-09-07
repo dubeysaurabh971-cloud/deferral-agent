@@ -22,8 +22,11 @@ conjure the fact into the KB.
 ## v5: definitional fixes, after v4 showed exhortation does not work
 
 Measured effect of everything below, plus the top_k change in src/config.py, means over three
-complete runs: false escalation 37% -> 12%, false resolutions 12 -> 11.7, adversarial accuracy
-65% -> 71%. Better on both error types at once, which no previous revision managed.
+complete runs: false escalation 37% -> 12%, adversarial accuracy 65% -> 71%, and 28.3 fewer
+deferral errors -- with false resolutions unchanged within the spread (11.7 against 12, over
+runs of [11, 10, 14] whose stdev is 2.08, so that 0.3 is not a difference and nothing here
+rests on it). Improving false escalation without paying for it in false resolutions is what no
+previous revision managed.
 
 v4 tried to fix over-clarification by making TEST A *sound* stricter -- name the fork, or it
 is not underspecified. It produced more clarification, not less (golden 49% -> 42%). The
