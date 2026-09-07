@@ -13,6 +13,8 @@ import argparse
 import json
 import random
 import statistics
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from src import config
 from src.eval.scorers import score_correctness, score_groundedness
@@ -173,6 +175,9 @@ def run_full_report(
     seed: int = 0,
     resolver_name: str = "naive",
     judge: bool = True,
+    workers: int = 1,
+    resolver=None,
+    review_clarifications: bool = True,
 ) -> dict:
     """Live resolver + LLM judge. golden_n/adversarial_n cap the item counts for a sampled run.
 
@@ -183,32 +188,158 @@ def run_full_report(
     judge=False skips the LLM-judge scorers. Decision accuracy is a pure comparison against
     the expected label, so the headline gate metric costs one call per item instead of three
     -- which is the difference between measurable and not on a quota-capped tier.
+
+    workers>1 scores items through a thread pool. Every item is an independent
+    retrieve-then-call, so nothing is shared but the retriever (read-only after construction)
+    and the trace log (locked in src/trace.py). This is what makes the 160-item run 6 minutes
+    instead of 45, and iterating on the gate prompt at full coverage rather than on a subsample
+    is the whole reason finding 4's lesson -- always measure both sets -- is affordable to obey.
+
+    resolver may be passed in to reuse an already-built index across successive runs; the
+    ~40s load and ~600MB are identical every time.
     """
-    from src.resolver import GatedResolver, NaiveResolver
+    if resolver is None:
+        from src.resolver import GatedResolver, NaiveResolver
 
-    resolver = GatedResolver() if resolver_name == "gated" else NaiveResolver()
+        resolver = (
+            GatedResolver(review_clarifications=review_clarifications)
+            if resolver_name == "gated"
+            else NaiveResolver()
+        )
 
-    # A full run is hundreds of serial calls over ~1.5h. The SDK already retries transient
-    # errors, but anything that outlives those retries should cost us one item, not the whole
-    # report. Failures are collected and disclosed rather than silently dropped, so a run
-    # that lost items can never be mistaken for a clean one.
+    # A full run is hundreds of model calls. The SDK already retries transient errors, but
+    # anything that outlives those retries should cost us one item, not the whole report.
+    # Failures are collected and disclosed rather than silently dropped, so a run that lost
+    # items can never be mistaken for a clean one.
     failures = []
 
     # Token accounting for the whole run. On a metered key this is the difference between
     # "the eval cost something" and a number you can multiply by a rate, so it is totalled
     # across both the resolver and the judge rather than reported per-item.
     spend = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
+    spend_lock = threading.Lock()
 
     def account(usage) -> None:
         if usage is None:
             return
         if isinstance(usage, dict):
-            spend["input_tokens"] += usage.get("input_tokens") or 0
-            spend["output_tokens"] += usage.get("output_tokens") or 0
+            got_in = usage.get("input_tokens") or 0
+            got_out = usage.get("output_tokens") or 0
         else:
-            spend["input_tokens"] += usage.input_tokens or 0
-            spend["output_tokens"] += usage.output_tokens or 0
-        spend["calls"] += 1
+            got_in = usage.input_tokens or 0
+            got_out = usage.output_tokens or 0
+        with spend_lock:
+            spend["input_tokens"] += got_in
+            spend["output_tokens"] += got_out
+            spend["calls"] += 1
+
+    def score_golden(item: dict) -> dict:
+        run = resolver.resolve(item["question"])
+        account(run.get("usage"))
+        groundedness = correctness = None
+        if judge:
+            groundedness, g_usage = score_groundedness(run["answer"], run["retrieved_chunks"])
+            account(g_usage)
+            correctness, c_usage = score_correctness(
+                item["question"], run["answer"], item["reference_answer"]
+            )
+            account(c_usage)
+        return {
+            "item_id": item["item_id"],
+            "decision": run["decision"],
+            "decision_correct": run["decision"] == item["expected_decision"],
+            "grounded": groundedness.grounded if judge else None,
+            "correctness_score": correctness.score if judge else None,
+            "policy_override": run.get("policy_override"),
+            # Kept so a failure can be diagnosed from the report alone, without re-deriving it
+            # from traces/runs.jsonl by matching on ticket text.
+            "kb_coverage": run.get("kb_coverage"),
+            "model_decision": run.get("model_decision"),
+            "requires_human_authority": run.get("requires_human_authority"),
+            "missing_information": run.get("missing_information"),
+            "clarify_review": run.get("clarify_review"),
+        }
+
+    def score_adversarial(item: dict) -> dict:
+        run = resolver.resolve(item["ticket_text"])
+        account(run.get("usage"))
+        groundedness = None
+        if judge:
+            groundedness, g_usage = score_groundedness(run["answer"], run["retrieved_chunks"])
+            account(g_usage)
+        return {
+            "item_id": item["item_id"],
+            "category": item["category"],
+            "expected_decision": item["expected_decision"],
+            "decision": run["decision"],
+            "decision_correct": run["decision"] == item["expected_decision"],
+            "grounded": groundedness.grounded if judge else None,
+            "policy_override": run.get("policy_override"),
+            "kb_coverage": run.get("kb_coverage"),
+            "model_decision": run.get("model_decision"),
+            "requires_human_authority": run.get("requires_human_authority"),
+            "missing_information": run.get("missing_information"),
+            "clarify_review": run.get("clarify_review"),
+        }
+
+    progress_lock = threading.Lock()
+
+    def run_set(label: str, items: list[dict], score_fn, describe) -> list[dict]:
+        """Score `items`, in input order, with `workers` in flight.
+
+        Results are collected into a pre-sized slot list rather than appended, so the report
+        rows come out in dataset order regardless of completion order -- otherwise two runs of
+        the same set would produce diffs that are pure scheduling noise.
+
+        Items that raise are retried once, serially, after the concurrent pass. A dropped item
+        is not a neutral loss: every rate in the report is a fraction over the items that
+        survived, so losing 10 of 60 adversarial items to a network blip silently reweights the
+        category mix and makes two runs incomparable. The SDK's own retries cover a rate-limit
+        response; they do not cover a connection that drops mid-run, which is what actually
+        happened here. Anything still failing after the retry is disclosed in `failures`.
+        """
+        slots: list[dict | None] = [None] * len(items)
+        done = {"n": 0}
+        errors: dict[int, str] = {}
+
+        def work(idx_item):
+            idx, item = idx_item
+            try:
+                slots[idx] = score_fn(item)
+            except Exception as e:
+                errors[idx] = f"{type(e).__name__}: {e}"
+                with progress_lock:
+                    done["n"] += 1
+                    print(f"  [{done['n']}/{len(items)}] {item['item_id']} FAILED: {type(e).__name__}: {e}")
+                return
+            errors.pop(idx, None)
+            with progress_lock:
+                done["n"] += 1
+                print(f"  [{done['n']}/{len(items)}] {describe(item, slots[idx])}")
+
+        if workers > 1 and len(items) > 1:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                list(pool.map(work, enumerate(items)))
+        else:
+            for pair in enumerate(items):
+                work(pair)
+
+        if errors:
+            print(f"  retrying {len(errors)} failed {label} item(s) serially")
+            for idx in sorted(errors):
+                item = items[idx]
+                try:
+                    slots[idx] = score_fn(item)
+                except Exception as e:
+                    errors[idx] = f"{type(e).__name__}: {e} (after retry)"
+                    print(f"    {item['item_id']} FAILED AGAIN: {type(e).__name__}")
+                    continue
+                errors.pop(idx, None)
+                print(f"    recovered {describe(item, slots[idx])}")
+
+        for idx, err in sorted(errors.items()):
+            failures.append({"set": label, "item_id": items[idx]["item_id"], "error": err})
+        return [s for s in slots if s is not None]
 
     all_golden = load_golden()
     # Golden items are all expected_decision=RESOLVE, so there is no category to stratify on;
@@ -219,67 +350,30 @@ def run_full_report(
         random.Random(seed).shuffle(golden)
         golden = golden[:golden_n]
 
-    golden_results = []
-    for i, item in enumerate(golden):
-        try:
-            run = resolver.resolve(item["question"])
-            account(run.get("usage"))
-            groundedness = correctness = None
-            if judge:
-                groundedness, g_usage = score_groundedness(run["answer"], run["retrieved_chunks"])
-                account(g_usage)
-                correctness, c_usage = score_correctness(
-                    item["question"], run["answer"], item["reference_answer"]
-                )
-                account(c_usage)
-        except Exception as e:
-            failures.append({"set": "golden", "item_id": item["item_id"], "error": f"{type(e).__name__}: {e}"})
-            print(f"  [{i + 1}/{len(golden)}] {item['item_id']} FAILED: {type(e).__name__}")
-            continue
-        golden_results.append({
-            "item_id": item["item_id"],
-            "decision": run["decision"],
-            "decision_correct": run["decision"] == item["expected_decision"],
-            "grounded": groundedness.grounded if judge else None,
-            "correctness_score": correctness.score if judge else None,
-            "policy_override": run.get("policy_override"),
-        })
-        detail = f"grounded={groundedness.grounded} correctness={correctness.score}" if judge else ""
-        print(f"  [{i + 1}/{len(golden)}] {item['item_id']} {run['decision']:8s} {detail}")
+    def describe_golden(item, row):
+        detail = (
+            f"grounded={row['grounded']} correctness={row['correctness_score']}" if judge else ""
+        )
+        return f"{item['item_id']} {row['decision']:8s} cov={row['kb_coverage']} {detail}"
+
+    golden_results = run_set("golden", golden, score_golden, describe_golden)
 
     all_adversarial = load_adversarial()
     adversarial = all_adversarial
     if adversarial_n is not None and adversarial_n < len(all_adversarial):
         adversarial = stratified_sample(all_adversarial, adversarial_n, "category", seed)
 
-    adversarial_results = []
-    for i, item in enumerate(adversarial):
-        try:
-            run = resolver.resolve(item["ticket_text"])
-            account(run.get("usage"))
-            groundedness = None
-            if judge:
-                groundedness, g_usage = score_groundedness(run["answer"], run["retrieved_chunks"])
-                account(g_usage)
-        except Exception as e:
-            failures.append({"set": "adversarial", "item_id": item["item_id"], "error": f"{type(e).__name__}: {e}"})
-            print(f"  [{i + 1}/{len(adversarial)}] {item['item_id']} FAILED: {type(e).__name__}")
-            continue
-        adversarial_results.append({
-            "item_id": item["item_id"],
-            "category": item["category"],
-            "expected_decision": item["expected_decision"],
-            "decision": run["decision"],
-            "decision_correct": run["decision"] == item["expected_decision"],
-            "grounded": groundedness.grounded if judge else None,
-            "policy_override": run.get("policy_override"),
-        })
-        mark = "OK " if run["decision"] == item["expected_decision"] else "MISS"
-        detail = f" grounded={groundedness.grounded}" if judge else ""
-        print(
-            f"  [{i + 1}/{len(adversarial)}] {item['item_id']} ({item['category']}) {mark} "
-            f"got={run['decision']} want={item['expected_decision']}{detail}"
+    def describe_adversarial(item, row):
+        mark = "OK " if row["decision_correct"] else "MISS"
+        detail = f" grounded={row['grounded']}" if judge else ""
+        return (
+            f"{item['item_id']} ({item['category']}) {mark} "
+            f"got={row['decision']} want={item['expected_decision']}{detail}"
         )
+
+    adversarial_results = run_set(
+        "adversarial", adversarial, score_adversarial, describe_adversarial
+    )
 
     false_escalation_rate, deferral_precision = deferral_metrics(golden_results, adversarial_results)
 
@@ -309,6 +403,8 @@ def run_full_report(
         "n_golden_available": len(all_golden),
         "n_adversarial_available": len(all_adversarial),
         "n_failed": len(failures),
+        "workers": workers,
+        "review_clarifications": review_clarifications if resolver_name == "gated" else None,
         "failures": failures,
         "token_spend": {
             **spend,
@@ -379,16 +475,28 @@ if __name__ == "__main__":
     parser.add_argument("--offline", action="store_true", help="Force the offline report even if a key is present")
     parser.add_argument("--resolver", choices=["naive", "gated"], default="naive", help="Which resolver to evaluate")
     parser.add_argument("--no-judge", action="store_true", help="Skip LLM-judge scorers; decision metrics only (1 call/item)")
+    parser.add_argument(
+        "--workers", type=int, default=1,
+        help="Score this many items concurrently (default 1). 8 turns the full 160-item run "
+             "from ~45min into ~6min; the per-item work is independent.",
+    )
+    parser.add_argument("--out", default=None, help="Report filename under eval_results/ (default: auto)")
+    parser.add_argument(
+        "--no-review", action="store_true",
+        help="Gated resolver only, without the clarification reviewer -- isolates the gate's own "
+             "contribution from the second-stage call.",
+    )
     args = parser.parse_args()
 
     if args.offline or not config.api_key_present():
         report = run_offline_report()
-        save_report(report, "baseline_offline.json")
+        save_report(report, args.out or "baseline_offline.json")
     else:
         report = run_full_report(
-            args.golden_n, args.adversarial_n, args.seed, args.resolver, not args.no_judge
+            args.golden_n, args.adversarial_n, args.seed, args.resolver, not args.no_judge,
+            workers=args.workers, review_clarifications=not args.no_review,
         )
         stem = "gated" if args.resolver == "gated" else "baseline"
         suffix = "sampled" if report["sampled"] else "full"
-        save_report(report, f"{stem}_{suffix}.json")
+        save_report(report, args.out or f"{stem}_{suffix}.json")
     print_summary(report)
