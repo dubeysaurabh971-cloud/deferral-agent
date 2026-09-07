@@ -1,59 +1,59 @@
 {
-  "matched_traces": 160,
+  "matched_traces": 164,
   "settings": [
     {
       "escalate_on_partial": true,
       "n_golden": 100,
       "n_adversarial": 60,
-      "golden_decision_accuracy": 0.49,
-      "adversarial_decision_accuracy": 0.7166666666666667,
+      "golden_decision_accuracy": 0.88,
+      "adversarial_decision_accuracy": 0.6833333333333333,
       "adversarial_by_category": {
         "ambiguous": {
           "n": 20,
-          "decision_accuracy": 1.0
+          "decision_accuracy": 0.9
         },
         "injection": {
           "n": 10,
-          "decision_accuracy": 0.2
+          "decision_accuracy": 0.5
         },
         "near_miss": {
           "n": 10,
-          "decision_accuracy": 0.8
+          "decision_accuracy": 0.6
         },
         "out_of_kb": {
           "n": 20,
-          "decision_accuracy": 0.65
+          "decision_accuracy": 0.6
         }
       },
-      "false_escalation_rate": 0.51,
-      "deferral_precision": 0.5046728971962616
+      "false_escalation_rate": 0.12,
+      "deferral_precision": 0.7719298245614035
     },
     {
       "escalate_on_partial": false,
       "n_golden": 100,
       "n_adversarial": 60,
-      "golden_decision_accuracy": 0.5,
-      "adversarial_decision_accuracy": 0.7166666666666667,
+      "golden_decision_accuracy": 0.88,
+      "adversarial_decision_accuracy": 0.6833333333333333,
       "adversarial_by_category": {
         "ambiguous": {
           "n": 20,
-          "decision_accuracy": 1.0
+          "decision_accuracy": 0.9
         },
         "injection": {
           "n": 10,
-          "decision_accuracy": 0.2
+          "decision_accuracy": 0.5
         },
         "near_miss": {
           "n": 10,
-          "decision_accuracy": 0.8
+          "decision_accuracy": 0.6
         },
         "out_of_kb": {
           "n": 20,
-          "decision_accuracy": 0.65
+          "decision_accuracy": 0.6
         }
       },
-      "false_escalation_rate": 0.5,
-      "deferral_precision": 0.5094339622641509
+      "false_escalation_rate": 0.12,
+      "deferral_precision": 0.7719298245614035
     }
   ]
 }

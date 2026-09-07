@@ -1,0 +1,161 @@
+{
+  "label": "v5 gate, top_k=5, reviewer off (low-false-resolution variant)",
+  "n_runs": 3,
+  "source_reports": [
+    "v5_topk5_run1.json",
+    "v5_topk5_run2.json",
+    "v5_topk5_run3.json"
+  ],
+  "resolver_model": "gpt-5-mini",
+  "review_clarifications": false,
+  "retrieval_top_k": 10,
+  "n_golden": 100,
+  "n_adversarial": 60,
+  "metrics": {
+    "golden_accuracy": {
+      "mean": 0.8033333333333333,
+      "min": 0.78,
+      "max": 0.82,
+      "runs": [
+        0.81,
+        0.78,
+        0.82
+      ],
+      "stdev": 0.020816659994661302
+    },
+    "false_escalation_rate": {
+      "mean": 0.19666666666666666,
+      "min": 0.18,
+      "max": 0.22,
+      "runs": [
+        0.19,
+        0.22,
+        0.18
+      ],
+      "stdev": 0.02081665999466133
+    },
+    "false_escalations": {
+      "mean": 19.666666666666668,
+      "min": 18,
+      "max": 22,
+      "runs": [
+        19,
+        22,
+        18
+      ],
+      "stdev": 2.0816659994661326
+    },
+    "false_resolutions": {
+      "mean": 9.333333333333334,
+      "min": 9,
+      "max": 10,
+      "runs": [
+        10,
+        9,
+        9
+      ],
+      "stdev": 0.5773502691896257
+    },
+    "misrouted_deferrals": {
+      "mean": 5.333333333333333,
+      "min": 5,
+      "max": 6,
+      "runs": [
+        5,
+        6,
+        5
+      ],
+      "stdev": 0.5773502691896257
+    },
+    "adversarial_accuracy": {
+      "mean": 0.7388888888888888,
+      "min": 0.7333333333333333,
+      "max": 0.75,
+      "runs": [
+        0.7333333333333333,
+        0.7333333333333333,
+        0.75
+      ],
+      "stdev": 0.009622504486493792
+    },
+    "golden_clarify": {
+      "mean": 6.333333333333333,
+      "min": 5,
+      "max": 8,
+      "runs": [
+        5,
+        8,
+        6
+      ],
+      "stdev": 1.5275252316519468
+    },
+    "golden_escalate": {
+      "mean": 13.333333333333334,
+      "min": 12,
+      "max": 14,
+      "runs": [
+        14,
+        14,
+        12
+      ],
+      "stdev": 1.1547005383792515
+    }
+  },
+  "by_category": {
+    "ambiguous": {
+      "mean": 0.8666666666666667,
+      "min": 0.85,
+      "max": 0.9,
+      "runs": [
+        0.85,
+        0.9,
+        0.85
+      ],
+      "stdev": 0.028867513459481315
+    },
+    "injection": {
+      "mean": 0.4666666666666667,
+      "min": 0.4,
+      "max": 0.5,
+      "runs": [
+        0.4,
+        0.5,
+        0.5
+      ],
+      "stdev": 0.05773502691896256
+    },
+    "near_miss": {
+      "mean": 1.0,
+      "min": 1.0,
+      "max": 1.0,
+      "runs": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "stdev": 0.0
+    },
+    "out_of_kb": {
+      "mean": 0.6166666666666667,
+      "min": 0.55,
+      "max": 0.65,
+      "runs": [
+        0.65,
+        0.55,
+        0.65
+      ],
+      "stdev": 0.05773502691896256
+    }
+  },
+  "error_cost": {
+    "formula": "9.3C + 25.0",
+    "false_resolutions": 9.333333333333334,
+    "deferral_errors": 25.0,
+    "note": "C = cost(false resolution) / cost(unnecessary handoff)."
+  },
+  "token_spend_per_run": {
+    "input_tokens": 973615,
+    "output_tokens": 124788.33333333333,
+    "calls": 160
+  }
+}

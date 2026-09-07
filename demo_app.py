@@ -105,15 +105,18 @@ if not config.api_key_present():
 with st.sidebar:
     st.subheader("Configuration")
     reviewer_on = st.toggle(
-        "Clarification reviewer", value=True,
+        "Clarification reviewer", value=False,
         help="Second-stage call that reviews CLARIFY decisions and can overturn them to RESOLVE. "
              "Only fires on CLARIFY, never on a detected injection, and only where the policy layer "
-             "would have permitted a RESOLVE anyway.",
+             "would have permitted a RESOLVE anyway. OFF by default since v5.",
     )
     st.caption(
-        "Toggling this changes the outcome on only **8 of 160** eval tickets — the two examples "
-        "marked *reviewer* are among them. On everything else both settings agree, which is the "
-        "point: it is a targeted fix, not a global loosening."
+        "**Off by default since v5**, reversing an earlier decision. It existed to catch "
+        "clarifications that should have been answers, and the v5 gate stopped producing them — "
+        "golden CLARIFY fell from 25 to 1–6, so nearly every clarification it now sees is a real "
+        "one and its remaining effect is to overturn some of those. Measured, it raises false "
+        "resolutions 12.5 → 15.0. Left here because watching it overturn a *correct* question is "
+        "the clearest way to see why."
     )
     st.divider()
     compare_baseline = st.toggle(
@@ -233,8 +236,14 @@ elif run:
 
     with right:
         st.markdown("##### Decision trace")
+        # supporting_excerpts is the claim the policy layer checks: a 'full' coverage label that
+        # points at nothing is refused, so showing the list next to the label is what makes the
+        # override below legible rather than mysterious.
+        cited = r.get("supporting_excerpts") or []
+        cited_str = ", ".join(f"[{n}]" for n in cited) if cited else "none cited"
         st.markdown(
             f"- **kb_coverage** `{r['kb_coverage']}`\n"
+            f"- **stated by** {cited_str}\n"
             f"- **model decided** `{r['model_decision']}`\n"
             f"- **final decision** `{r['decision']}`\n"
             f"- **requires human authority** `{r['requires_human_authority']}`\n"
